@@ -1,22 +1,28 @@
 import silence_removal as rd
+import read as rd1
 import numpy
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft
 import sys
+from math import floor
 
 # constants
 Fs          = 44100.0
 frame_size  = 512
-step_size = 256
-watermark   = '01001110'
-U           = 4 #no of frames per unit
-B           = 10 #no of units per block
-Bits_Block  = 2 #no of bits per block
+step_size   = 256
 
-
+watermark   = '01001110110111001101011101'
+U           = 4    #no of frames per unit
+B           = 10   #no of units per block
+Bits_Block  = 2    #no of bits per block
+Tiles_bits  = 20
+Sync_bits   = 100
+Total_tiles = 140
 # no of tiles to watermark 10*14 = 140
 # 2*20=40 watermark and 100 sync bits 
-
+PRN                = [1, 1, 1, -1, -1, 1, 1, -1, 1, 1, 1, -1, 1, -1, -1, 1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, 1, 1, -1, 1, -1, 1, 1, 1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, -1, -1, 1, -1, -1, -1, -1, -1, -1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, 1, 1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, 1, -1, 1, -1, -1, -1, 1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, -1, -1, 1, -1, 1, -1, -1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, 1, -1, -1, -1, 1, -1, 1, 1, 1, -1, -1, -1, 1, -1, -1, 1, 1, 1, -1]
+Positions          = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139]
+Positions_srambled = [18, 123, 33, 1, 132, 49, 21, 46, 3, 97, 20, 47, 44, 135, 114, 104, 25, 75, 41, 58, 117, 88, 22, 77, 120, 102, 133, 8, 63, 83, 99, 109, 42, 53, 108, 69, 23, 38, 115, 71, 128, 11, 68, 59, 35, 91, 137, 29, 98, 111, 62, 5, 87, 92, 51, 93, 119, 116, 96, 40, 125, 118, 134, 76, 122, 136, 26, 101, 4, 107, 15, 78, 55, 129, 86, 103, 106, 131, 67, 130, 70, 36, 61, 121, 82, 45, 14, 127, 37, 81, 24, 16, 138, 65, 60, 7, 0, 73, 28, 112, 32, 110, 9, 13, 100, 19, 89, 105, 90, 31, 94, 30, 12, 64, 80, 139, 43, 79, 6, 84, 72, 57, 66, 74, 27, 52, 2, 126, 54, 34, 10, 124, 50, 48, 39, 113, 85, 56, 17, 95]
 
 # length= 525200 and countFrames= 1024
 # MER
@@ -177,30 +183,80 @@ def silenceRemoval(x,smoothWindow=0.5, Weight=0.5, plot=True , silenceRemoval_tu
         # plotting_end
         return segmentLimits
     else:
-        return
+        return x
 
-file = 'bass_half.wav'
-rate,data = rd.dataread(file)
-data = stereo2mono(data)                        # convert to mono
+def expand_bits(watermark_bits):
+    bits_expand = numpy.empty(Total_tiles)
+    for i in range(Bits_Block):
+        if(watermark_bits[i]== '0'):
+            dummy = -1
+        elif(watermark_bits[i]== '1'):
+            dummy = 1
+        for j in range(Tiles_bits):
+            bits_expand[int(Positions_srambled[(i*Tiles_bits)+j])] = float(PRN[(i*Tiles_bits)+j])*float(dummy)
+    for i in range(Bits_Block*Tiles_bits,Total_tiles):
+        bits_expand[int(Positions_srambled[i])] = PRN[i];
+    return bits_expand
+
+
+file             = 'bass_half.wav'
+rate,data        = rd.dataread(file)
+data             = stereo2mono(data)                        # convert to mono
+watermarked_data = numpy.empty(len(data))
+watermarked_data = 1*data
 # once can either choose to do silence detection and removal, in which case
 # the resulting watermarked audio will be so much more better in quality
 # the last argument is made one if and only if there is a need to remove 
 # silence frames from the audio
 segment_limits = silenceRemoval(data,1)
-no_bits = len(watermark)/2
-duration_block = U*B*frame_size/Fs
-total_no_watermarked = 0
-for i in range(len(segment_limits)):
-    x = segment_limits[i][1]-segment_limits[i][0]
-    no_watermarked = x/duration_block  
-    if(total_no_watermarked<no_bits):
-        watermarking_block(data[int(segment_limits[i][1]*Fs):int(segment_limits[i][0]*Fs)],watermark[0:(no_watermarked*Bits_Block)],Fs,frame_size,window_size)
-        total_no_watermarked = total_no_watermarked+(no_watermarked*Bits_Block)
- 
+no_blocks      = len(watermark)/Bits_Block
+duration_block = B*U*frame_size/Fs
+
+
 # TODO - iteration for modifying the leeway involved in watermarking
 # the audio in such a way that the segment limits get increased.
+total_no_watermarked = 0
+c  = 0
+for i in range(len(segment_limits)):
+    print 'i value =',i
+    x = segment_limits[i][1]-segment_limits[i][0]
+    print 'x value =',x
+    no_watermarked = int(x/duration_block) 
+    print 'no_watermarked =',no_watermarked
+    if(total_no_watermarked+no_watermarked<no_blocks):
+        for j in range(no_watermarked):
+            offset  = j*duration_block
+            start   = int(floor((segment_limits[i][0]+offset)*Fs))
+            end     = int(floor(((segment_limits[i][0]+offset)+duration_block)*Fs))
+            start1  = int(floor((total_no_watermarked+j)*Bits_Block))
+            end1    = int(floor(((total_no_watermarked+j)*Bits_Block)+Bits_Block))
+            watermark_expanded = expand_bits(watermark[start1:end1])
+            return_data = rd1.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
+            for k in range(start,end):
+                watermarked_data[k] = return_data[k-start]
+        total_no_watermarked = total_no_watermarked+no_watermarked
+    else:
+        for j in range(no_blocks-total_no_watermarked):
+            offset  = j*duration_block
+            start   = int(floor((segment_limits[i][0]+offset)*Fs))
+            end     = int(floor(((segment_limits[i][0]+offset)+duration_block)*Fs))
+            start1  = int(floor((total_no_watermarked+j)*Bits_Block))
+            end1    = int(floor(((total_no_watermarked+j)*Bits_Block)+Bits_Block))
+            watermark_expanded = expand_bits(watermark[start1:end1])
+            return_data = rd1.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
+            for k in range(start,end):
+                watermarked_data[k] = return_data[k-start]
+        print 'Watermarking Done'
+        c = 1    
+        break
+if(c==0):
+    print 'Insufficient data to watermark bits in'
 
+rd.datawrite(watermarked_data)
 
-
-
-
+# comparison of the watermarked and the original signal
+plt.subplot(2, 1, 1)
+plt.plot(data)
+plt.subplot(2, 1, 2)
+plt.plot(watermarked_data)
+plt.show() 
