@@ -48,7 +48,7 @@ def dataread(filename):
 def signexpanded(PNseq,N_unit,factor):
     tmp = []
     for i in range(Num_subbands):
-        tmp.append(factor*PN[N_unit+(B*i)])
+        tmp.append(factor*PNseq[N_unit+(B*i)])
 
     sign = []
     for i in range(HalfWin):
@@ -120,7 +120,7 @@ def SPL_normalise(wave_DB,length):
     return wave_DB
 
 
-def tonal_markers_sound(wave_DB,length,barkarray,float_barkarray,criticaldefn,quiet_threshold):
+def tonal_markers_sound(wave_DB,length):
     # print wave_DB
     # if (length>252):
     #     length = 252
@@ -148,13 +148,13 @@ def tonal_markers_sound(wave_DB,length,barkarray,float_barkarray,criticaldefn,qu
     # to every critical bandrate and adds up all the non tonals in that bin
     # into this one bin, and gives a marker of 2 to the central non tonal one
     sum1 = 0
-    bark_prev = barkarray[0]
+    bark_prev = bark_array_int[0]
     for i in range(length):
         if(val[i]==0):
-            if(barkarray[i]!=bark_prev):
+            if(bark_array_int[i]!=bark_prev):
                 Pval[criticaldefn[bark_prev]]=10*numpy.log10(sum1)
                 val[criticaldefn[bark_prev]]=2
-                bark_prev = barkarray[i]
+                bark_prev = bark_array_int[i]
                 sum1 = 0   
             Pval[i] = 0         
             sum1+=pow(10,(wave_DB[i]/10.0))
@@ -169,11 +169,11 @@ def tonal_markers_sound(wave_DB,length,barkarray,float_barkarray,criticaldefn,qu
     count = 0
     for i in range(length):
         if(val[i]==1 or val[i]==2):
-            if(Pval[i]<quiet_threshold[i]):
+            if(Pval[i]<threshold_quiet_vals[i]):
                 val[i] = 0
                 Pval[i]= 0
             if(count>0):
-                if(float_barkarray[valprev]-float_barkarray[i]<0.5):
+                if(bark_array_float[valprev]-bark_array_float[i]<0.5):
                     if(Pval[valprev]>Pval[i]):
                         Pval[i] = 0
                         val[i]  = 0
@@ -184,7 +184,7 @@ def tonal_markers_sound(wave_DB,length,barkarray,float_barkarray,criticaldefn,qu
             valprev = i
     return Pval,val
             
-def compute_masking_indices(val,bark_array_float,length):
+def compute_masking_indices(val,length):
     masking_indices  = numpy.empty(length)
     for i in range(length):
         if(val[i]==1):
@@ -224,11 +224,11 @@ def spreading_function(zmaskee,zmasker,Pmasker):
     if(c==1 or c==2 or c==3 or c==4):
         return 10**(v/10.0)
 
-def tonal_nontonal_threshold(Pval,val,float_barkarray_val,mask_index,float_barkarray,length):
+def tonal_nontonal_threshold(Pval,val,float_barkarray_val,mask_index,length):
     sum = 0
     for i in range(length):
         if (val[i] ==2 or val[i] ==1):
-            val_spreading_fn = spreading_function(float_barkarray_val,float_barkarray[i],Pval[i])
+            val_spreading_fn = spreading_function(float_barkarray_val,bark_array_float[i],Pval[i])
             if(val_spreading_fn!=-1):
                 l = Pval[i]+mask_index[i]+val_spreading_fn
                 x = 10**(l/10.0)
@@ -238,8 +238,8 @@ def tonal_nontonal_threshold(Pval,val,float_barkarray_val,mask_index,float_barka
 def globalMaskingThreshold(Pval,val,float_barkarray,quiet_threshold,mask_index,length):
     global_masker = numpy.empty(length)
     for i in range(length):
-        x = tonal_nontonal_threshold(Pval,val,float_barkarray[i],mask_index,float_barkarray,length)
-        global_masker[i]=10*numpy.log10((10**(quiet_threshold[i]/10))+x)
+        x = tonal_nontonal_threshold(Pval,val,bark_array_float[i],mask_index,length)
+        global_masker[i]=10*numpy.log10((10**(threshold_quiet_vals[i]/10))+x)
     return global_masker
 
 def minMaskingThreshold(global_mask,length):
@@ -282,43 +282,43 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
     # nFFT        = Win / 2
 
     while (curPos + Win - 1 < N):                        # for each short-term window until the end of signal
-        countFrames += 1
-
+        # expand the PN bits with sign, expanded bits has a size of 256
+        expandedbits = signexpanded(watermarkbits_expanded,countUnits,float(C[countFrames]))
+        
+        # one window of the signal
         x            = signal[curPos:curPos+Win]                    # get current window
+        # increment the start
         curPos       = curPos + Step                           # update window position
         # hann windowing to allow smooth ends and better concatenation
         x1           = hann(x,Win)
+        # FFT is performed of the time window
         X            = (fft(x1))                                    # get fft magnitude        
-        #TODO --> separate function
+        #TODO separate function
         Xabs         = abs(X)
         # normalize fft
         Xabslog      = 10*numpy.log10(numpy.square(Xabs))
-        #TODO - examine how needed this is
+        #TODO examine how needed this is
         Xabslog_norm = SPL_normalise(Xabslog,Win)
        
 
-        P,v          = tonal_markers_sound(Xabslog_norm[:(Win/2)+1],(Win/2)+1,bark_array,bark_array_float,criticaldefn,threshold_quiet_vals)
-        mask_indices = compute_masking_indices(v,bark_array_float,len(v))
-        
+        P,v          = tonal_markers_sound(Xabslog_norm[:(Win/2)+1],(Win/2)+1)
+        mask_indices = compute_masking_indices(v,len(v))
         global_mask  = globalMaskingThreshold(P,v,bark_array_float,threshold_quiet_vals,mask_indices,len(v))
-        
         min_mask     = minMaskingThreshold(global_mask,len(v))
 
-        expandedbits = signexpanded(PNseq,countUnits,float(C[countFrames]))
-        print expandedbits
-        print len(expandedbits)
-        sys.exit()
+        
         # U           = 4    no of frames per unit
         # B           = 10   no of units per block
         # when the number of frames reaches U,increment countFrames 
         countFrames+=1
         if(countFrames>=U):
-            countFrame = 0
+            countFrames = 0
             countUnits+=1
 
         # when the number of units reaches U,encoding is done
         if(countUnits>=B):
             print 'Finished encoding one block'
+            return
     
-    # # print 'countFrames=',countFrames
-    # return numpy.array(stFeatures)
+    # # # print 'countFrames=',countFrames
+    # # return numpy.array(stFeatures)
