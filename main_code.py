@@ -252,7 +252,7 @@ for i in range(len(segment_limits)):
 if(c==0):
     print 'Insufficient data to watermark bits in'
 
-rd.datawrite(watermarked_data)
+# rd.datawrite(watermarked_data)
 
 # comparison of the watermarked and the original signal
 plt.subplot(2, 1, 1)
