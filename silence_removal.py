@@ -412,15 +412,6 @@ def trainSVM(features, Cparam):
     #(C=1.0, kernel='rbf', degree=3, gamma='auto', coef0=0.0, shrinking=True, probability=False, tol=0.001, cache_size=200, class_weight=None, verbose=False, max_iter=-1, decision_function_shape=None, random_state=None)      
     #Tolerance for stopping criterion - tolerance - happens when there is an N no of iterations are over or when there hasn't been sufficient improvement in the solution with changing x, x(new)/x(old) --> tolerance
     svm.fit(X,Y)
-    # print 'SVM OP',svm
-    # print 'length of X',len(X)
-    # print 'Debutantes',X[svm.support_]
-    # print 'indices of support vectors',svm.support_
-    # print 'Support vectors',svm.support_vectors_
-    # print 'No of support vectors',svm.n_support_
-    # print 'dual_coef_ ',svm.dual_coef_
-    # print 'coef_ ',svm.coef_  
-    # print 'intercept_',svm.intercept_
     #attributes returned
 	#support_          :array-like, shape = [n_SV] 
 	                    #Indices of support vectors.
