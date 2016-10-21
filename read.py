@@ -3,7 +3,7 @@ import exceptions
 import sys
 import numpy
 from sklearn.svm import SVC
-from scipy.fftpack import fft
+from scipy.fftpack import fft,ifft
 from scipy.fftpack.realtransforms import dct
 from math import pow,exp
 # from constants import TH
@@ -29,9 +29,9 @@ criticaldefn         = [1, 2, 3, 4, 5, 7, 8, 10, 12, 14, 16, 19, 21, 25, 29, 34,
 C                    = [1,1,-1,-1]
 U                    = 4    #no of frames per unit
 B                    = 10   #no of units per block
-mfccfilterbank_index = [2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 15.0, 16.0, 19.0, 20.0, 23.0, 25.0, 28.0, 30.0, 35.0, 37.0, 43.0, 46.0, 53.0, 57.0, 65.0, 70.0, 80.0]
-
+mfccfilterbank_index = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 15, 16, 19, 20, 23, 25, 28, 30, 35, 37, 43, 46, 53, 57, 65, 70, 80]
 Num_subbands         = 14
+watermark_strength   = 1
 
 #read the wave file
 def dataread(filename):
@@ -117,32 +117,61 @@ def SPL_normalise(wave_DB,length):
     for i in range(length):
         wave_DB[i]=96-maximum_value+wave_DB[i]
         # wave_DB[i] = wave_DB[i]
-    return wave_DB
+    return wave_DB,96-maximum_value
 
 
 def tonal_markers_sound(wave_DB,length):
     # print wave_DB
     # if (length>252):
     #     length = 252
-
-    val  = numpy.empty(length)
+    val  = numpy.zeros(length)
     Pval = numpy.empty(length)
 
-    for i in [0,1,length-2,length-1]:
-        Pval[i] = 0
-        val[i] = 0
-
-    # Figures if a point is a tonal maxima, allots a value of 1 to and 0 to non tonal 
-    for i in range(2,length-2):
-        c = 0
-        for j in range(1,3):
-            if(wave_DB[i]-wave_DB[i+j]<7 or wave_DB[i]-wave_DB[i-j]<7):
+    # Figures if a point is a tonal maxima, allots a value of 1 to tonal and 0 to non tonal and 3 to irrelevant ones
+    for i in range(2,62):
+        if(val[i]!=3):
+            c = 0
+            if(wave_DB[i]-wave_DB[i+2]<7 or wave_DB[i]-wave_DB[i-2]<7):
                 c = 1
-        if c==0 :
-            val[i] = 1
+            if c==0 :
+                val[i] = 1
+                val[i+1] = 3
+            else :
+                val[i] = 0
+
+    for i in range(62,126):
+        if(val[i] !=3):    
+            c = 0
+            if(wave_DB[i]-wave_DB[i+2]<7 or wave_DB[i]-wave_DB[i-2]<7 or wave_DB[i]-wave_DB[i+3]<7 or wave_DB[i]-wave_DB[i-3]<7):
+                c = 1
+            if c==0 :
+                val[i] = 1
+                val[i+1] = 3
+                val[i+2] = 3
+                val[i+3] = 3
+            else :
+                val[i] = 0
+
+    for i in range(126,249):
+        if(val[i] !=3):
+            c = 0
+            for j in range(2,7):
+                if(wave_DB[i]-wave_DB[i+j]<7 or wave_DB[i]-wave_DB[i-j]<7):
+                    c = 1
+            if c==0 :
+                val[i] = 1
+                val[i+1] = 3
+                val[i+2] = 3
+                val[i+3] = 3
+                val[i+4] = 3
+                val[i+5] = 3
+                val[i+6] = 3
+            else :
+                val[i] = 0
+
+    for i in range(2,249):
+        if(val[i]==1):
             Pval[i]   = 10*numpy.log10(pow(10,(wave_DB[i-1]/10.0))+pow(10,(wave_DB[i]/10.0))+pow(10,(wave_DB[i+1]/10.0)))
-        else :
-            val[i] = 0
 
     # Selects only the non tonal masker that is closest to the central 
     # to every critical bandrate and adds up all the non tonals in that bin
@@ -158,7 +187,7 @@ def tonal_markers_sound(wave_DB,length):
                 sum1 = 0   
             Pval[i] = 0         
             sum1+=pow(10,(wave_DB[i]/10.0))
-    
+
     # TODO -delete these
     # for i in range(len(criticaldefn)):
     #     print criticaldefn[i],Pval[criticaldefn[i]], float_barkarray[criticaldefn[i]],quiet_threshold[criticaldefn[i]]
@@ -235,26 +264,30 @@ def tonal_nontonal_threshold(Pval,val,float_barkarray_val,mask_index,length):
                 sum= sum+x
     return sum
 
-def globalMaskingThreshold(Pval,val,float_barkarray,quiet_threshold,mask_index,length):
+def globalMaskingThreshold(Pval,val,mask_index,length):
     global_masker = numpy.empty(length)
     for i in range(length):
         x = tonal_nontonal_threshold(Pval,val,bark_array_float[i],mask_index,length)
         global_masker[i]=10*numpy.log10((10**(threshold_quiet_vals[i]/10))+x)
     return global_masker
 
-def minMaskingThreshold(global_mask,length):
-    Subband_size = length / N_SUBBAND
-    min_masker = numpy.empty(N_SUBBAND)
+def minMaskingThreshold(global_mask):
+    min_masker = numpy.empty(Num_subbands)
     # print length
     # print Subband_size
     # print N_SUBBAND
-    for i in range(N_SUBBAND):
-        min_masker[i] = global_mask[Subband_size*i]
-        for j in range(Subband_size):
-                if (min_masker[i] > global_mask[(Subband_size*i)+j]):
-                    min_masker[i] = global_mask[(Subband_size*i)+j]
+    for i in range(Num_subbands):
+        min_masker[i] = global_mask[mfccfilterbank_index[2*i]]
+        for j in range(mfccfilterbank_index[2*i]+1,mfccfilterbank_index[(2*i)+1]+1):
+                if (min_masker[i] > global_mask[j]):
+                    min_masker[i] = global_mask[j]
     return min_masker
 
+def minMaskFill(min_mask,parameter):
+    fill_min_masker = numpy.ones(HalfWin+1)
+    for i in range(Num_subbands):
+        fill_min_masker[mfccfilterbank_index[2*i]:(mfccfilterbank_index[(2*i)+1]+1)] = (pow(10,float((min_mask[i] - parameter)/20))*watermark_strength)
+    return fill_min_masker
 
 def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
     Win = int(Win)
@@ -268,6 +301,7 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
 
     # Signal normalization
     signal = numpy.double(signal)
+    return_signal = signal.copy()
 
     # TODO analyze the implcations of this
     # signal = signal / (2.0 ** 15)
@@ -275,37 +309,65 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
     # MAX = (numpy.abs(signal)).max()
     # signal = (signal - DC) / MAX
 
-    N           = len(signal)     # total number of samples
-    curPos      = 0
-    countFrames = 0
-    countUnits  = 0
+    N              = len(signal)     # total number of samples
+    curPos         = 0
+    countFrames    = 0
+    countUnits     = 0
+    prev_watermark = numpy.zeros(Win)
     # nFFT        = Win / 2
 
     while (curPos + Win - 1 < N):                        # for each short-term window until the end of signal
-        # expand the PN bits with sign, expanded bits has a size of 256
-        expandedbits = signexpanded(watermarkbits_expanded,countUnits,float(C[countFrames]))
-        
         # one window of the signal
         x            = signal[curPos:curPos+Win]                    # get current window
-        # increment the start
-        curPos       = curPos + Step                           # update window position
         # hann windowing to allow smooth ends and better concatenation
         x1           = hann(x,Win)
         # FFT is performed of the time window
         X            = (fft(x1))                                    # get fft magnitude        
         #TODO separate function
+        # Magnitude and argument of an FFT
         Xabs         = abs(X)
+        Xangle       = numpy.angle(X)
         # normalize fft
-        Xabslog      = 10*numpy.log10(numpy.square(Xabs))
+        Xabslog      = 10*numpy.log10(numpy.square(Xabs)/(Win*Win))
         #TODO examine how needed this is
-        Xabslog_norm = SPL_normalise(Xabslog,Win)
+        Xabslog_norm,parameter = SPL_normalise(Xabslog,Win)
        
+        # expand the PN bits with sign, expanded bits has a size of 256
+        expandedbits = signexpanded(watermarkbits_expanded,countUnits,float(C[countFrames]))
 
-        P,v          = tonal_markers_sound(Xabslog_norm[:(Win/2)+1],(Win/2)+1)
-        mask_indices = compute_masking_indices(v,len(v))
-        global_mask  = globalMaskingThreshold(P,v,bark_array_float,threshold_quiet_vals,mask_indices,len(v))
-        min_mask     = minMaskingThreshold(global_mask,len(v))
+        P,v              = tonal_markers_sound(Xabslog_norm[:(Win/2)+1],(Win/2)+1)
+        mask_indices     = compute_masking_indices(v,len(v))
+        global_mask      = globalMaskingThreshold(P,v,mask_indices,len(v))
+        min_mask         = minMaskingThreshold(global_mask)
+        min_mask_factors = minMaskFill(min_mask,parameter)
+        
+        # Recon_store      = numpy.empty(Step+1,dtype=complex)
+        # for i in range(1,Step+1):
+        #     SIN            = expandedbits[i-1]*min_mask_factors[i-1]*numpy.sin(Xangle[i])
+        #     COS            = expandedbits[i-1]*min_mask_factors[i-1]*numpy.cos(Xangle[i])
+        #     Recon_store[i] = complex(COS,SIN)
+        # Recon_store[0]= 0
 
+        Recon_store = numpy.empty(Win,dtype='complex')
+        for i in range(1,Win/2+1):
+            COS = expandedbits[i-1]*min_mask_factors[i]*numpy.cos(Xangle[i])
+            SIN = expandedbits[i-1]*min_mask_factors[i]*numpy.sin(Xangle[i])
+            Recon_store[i]=complex(COS,SIN)
+            if(i != Win-i):
+                Recon_store[Win-i]=complex(COS,-SIN)
+        Recon_store[0]= 0
+
+        value_embed      = ifft(Recon_store)
+        value_embed_real = numpy.real(value_embed)
+        hann_watermark   = hann(value_embed_real,Win)
+
+        # Writing in the info from the psycho acoustic model along with the current frame and the output of the prev iteration.
+        for i in range(Step):
+            return_signal[curPos+i] = prev_watermark[Step+i]+hann_watermark[i]+x[i];
+        
+        # save the prev values
+        for i in range(Win):
+            prev_watermark[i] = hann_watermark[i];   
         
         # U           = 4    no of frames per unit
         # B           = 10   no of units per block
@@ -318,7 +380,12 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
         # when the number of units reaches U,encoding is done
         if(countUnits>=B):
             print 'Finished encoding one block'
-            return
+            return return_signal
+
+        # increment the start
+        curPos       = curPos + Step                           
+        # update window position
+        
     
     # # # print 'countFrames=',countFrames
     # # return numpy.array(stFeatures)
