@@ -199,7 +199,7 @@ def expand_bits(watermark_bits):
     return bits_expand
 
 
-file             = 'bass_half.wav'
+file             = 'input.wav'
 rate,data        = rd1.dataread(file)
 data             = stereo2mono(data)                        # convert to mono
 watermarked_data = numpy.empty(len(data))
