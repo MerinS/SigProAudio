@@ -1,4 +1,4 @@
-from scipy.io.wavfile import read
+from scipy.io.wavfile import read,write
 import exceptions
 import sys
 import numpy
@@ -31,7 +31,10 @@ U                    = 4    #no of frames per unit
 B                    = 10   #no of units per block
 mfccfilterbank_index = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 15, 16, 19, 20, 23, 25, 28, 30, 35, 37, 43, 46, 53, 57, 65, 70, 80]
 Num_subbands         = 14
-watermark_strength   = 1
+watermark_strength   = 10
+
+frame_size           = 512
+duration_block_point = B*U*frame_size/(2.0)
 
 #read the wave file
 def dataread(filename):
@@ -40,9 +43,16 @@ def dataread(filename):
         return data
     except IOError:
         print("IOError:Wrong file or file path")
-        #LATER we will trace back and add codes for the exit code
+        #TODO we will trace back and add codes for the exit code
         sys.exit()
 
+def datawrite(filename,rate,data):
+    try:
+        write(filename, rate, data)
+    except IOError:
+        print("IOError:Wrong file or file path")
+        #TODO we will trace back and add codes for the exit code
+        sys.exit()
 
 # Block to expand the bits obtained from the bit-expand block
 def signexpanded(PNseq,N_unit,factor):
@@ -316,9 +326,9 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
     prev_watermark = numpy.zeros(Win)
     # nFFT        = Win / 2
 
-    while (curPos + Win - 1 < N):                        # for each short-term window until the end of signal
-        # one window of the signal
-        x            = signal[curPos:curPos+Win]                    # get current window
+    while (1):                        # for each short-term window until the end of signal
+        # take current window
+        x            = signal[curPos:curPos+Win].copy()
         # hann windowing to allow smooth ends and better concatenation
         x1           = hann(x,Win)
         # FFT is performed of the time window
@@ -362,13 +372,19 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
         hann_watermark   = hann(value_embed_real,Win)
 
         # Writing in the info from the psycho acoustic model along with the current frame and the output of the prev iteration.
-        for i in range(Step):
-            return_signal[curPos+i] = prev_watermark[Step+i]+hann_watermark[i]+x[i];
+        for i in range(Step):        
+            return_signal[curPos+i] = prev_watermark[Step+i]+hann_watermark[i]+signal[curPos+i]
         
         # save the prev values
         for i in range(Win):
             prev_watermark[i] = hann_watermark[i];   
         
+        
+        # increment the start
+        curPos       = curPos + Step 
+        if(curPos+Win>duration_block_point):
+            # print "bye"
+            return return_signal
         # U           = 4    no of frames per unit
         # B           = 10   no of units per block
         # when the number of frames reaches U,increment countFrames 
@@ -380,12 +396,5 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
         # when the number of units reaches U,encoding is done
         if(countUnits>=B):
             print 'Finished encoding one block'
+            print 'last encoded value',curPos+Step,'Length signal=',len(return_signal)
             return return_signal
-
-        # increment the start
-        curPos       = curPos + Step                           
-        # update window position
-        
-    
-    # # # print 'countFrames=',countFrames
-    # # return numpy.array(stFeatures)

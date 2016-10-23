@@ -9,20 +9,6 @@ from scipy.fftpack import fft
 from scipy.fftpack.realtransforms import dct
 
 eps = 0.00000001
-
-#read the wave file
-def dataread(filename):
-    try:
-        data = read(filename)
-        return data
-    except IOError:
-        print("IOError:Wrong file or file path")
-        #LATER we will trace back and add codes for the exit code
-        sys.exit()
-
-#LATER we will write the code to write data in
-# #write the data into a specified wave file
-# def datawrite(filename,data):
     
 def stChromaFeatures(X, fs, nChroma, nFreqsPerChroma):
     #TODO: 1 complexity
@@ -174,7 +160,7 @@ def mfccInitFilterBanks(fs,nfft):
 
     # Total number of filters
     nFiltTotal = numLinFiltTotal + numLogFilt
-    print 'mfcc channels',nFiltTotal
+    # print 'mfcc channels',nFiltTotal
 
     # Compute frequency points of the triangle:
     freqs = numpy.zeros(nFiltTotal+2,dtype=numpy.float64)

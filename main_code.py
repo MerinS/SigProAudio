@@ -200,7 +200,7 @@ def expand_bits(watermark_bits):
 
 
 file             = 'bass_half.wav'
-rate,data        = rd.dataread(file)
+rate,data        = rd1.dataread(file)
 data             = stereo2mono(data)                        # convert to mono
 watermarked_data = numpy.empty(len(data))
 watermarked_data = 1*data
@@ -210,38 +210,40 @@ watermarked_data = 1*data
 # silence frames from the audio
 segment_limits = silenceRemoval(data,1)
 no_blocks      = len(watermark)/Bits_Block
-duration_block = B*U*frame_size/Fs
+duration_block = B*U*frame_size/(Fs*(2.0))
+print duration_block
+duration_frame = frame_size/Fs     
 
 
 # TODO - iteration for modifying the leeway involved in watermarking
 # the audio in such a way that the segment limits get increased.
-total_no_watermarked = 0
+total_blocks_watermarked = 0
 c  = 0
+# U = 4    no of frames per unit
+# B = 10   no of units per block
 for i in range(len(segment_limits)):
-    print 'i value =',i
-    x = segment_limits[i][1]-segment_limits[i][0]
-    print 'x value =',x
-    no_watermarked = int(x/duration_block) 
-    print 'no_watermarked =',no_watermarked
-    if(total_no_watermarked+no_watermarked<no_blocks):
-        for j in range(no_watermarked):
+    # figures out the no of blocks within a non silent segment
+    no_blocks_segment = int((segment_limits[i][1]-segment_limits[i][0])/duration_block) 
+    if(total_blocks_watermarked+no_blocks_segment<no_blocks):
+        for j in range(no_blocks_segment):
             offset  = j*duration_block
             start   = int(floor((segment_limits[i][0]+offset)*Fs))
             end     = int(floor(((segment_limits[i][0]+offset)+duration_block)*Fs))
-            start1  = int(floor((total_no_watermarked+j)*Bits_Block))
-            end1    = int(floor(((total_no_watermarked+j)*Bits_Block)+Bits_Block))
+            # print start,end
+            start1  = int(floor((total_blocks_watermarked+j)*Bits_Block))
+            end1    = int(floor(((total_blocks_watermarked+j)*Bits_Block)+Bits_Block))
             watermark_expanded = expand_bits(watermark[start1:end1])
             return_data = rd1.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
             for k in range(start,end):
                 watermarked_data[k] = return_data[k-start]
-        total_no_watermarked = total_no_watermarked+no_watermarked
+        total_blocks_watermarked = total_blocks_watermarked+no_blocks_segment
     else:
-        for j in range(no_blocks-total_no_watermarked):
+        for j in range(no_blocks-total_blocks_watermarked):
             offset  = j*duration_block
             start   = int(floor((segment_limits[i][0]+offset)*Fs))
             end     = int(floor(((segment_limits[i][0]+offset)+duration_block)*Fs))
-            start1  = int(floor((total_no_watermarked+j)*Bits_Block))
-            end1    = int(floor(((total_no_watermarked+j)*Bits_Block)+Bits_Block))
+            start1  = int(floor((total_blocks_watermarked+j)*Bits_Block))
+            end1    = int(floor(((total_blocks_watermarked+j)*Bits_Block)+Bits_Block))
             watermark_expanded = expand_bits(watermark[start1:end1])
             return_data = rd1.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
             for k in range(start,end):
@@ -252,7 +254,7 @@ for i in range(len(segment_limits)):
 if(c==0):
     print 'Insufficient data to watermark bits in'
 
-# rd.datawrite(watermarked_data)
+rd1.datawrite('output.wav',rate,watermarked_data)
 
 # comparison of the watermarked and the original signal
 plt.subplot(2, 1, 1)
