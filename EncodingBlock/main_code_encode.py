@@ -1,5 +1,5 @@
-import silence_removal as rd
-import read as rd1
+import encoder_silence_removal as enc_SilRem
+import encodewatermark as enc_Wat
 import numpy
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft
@@ -12,7 +12,7 @@ Fs          = 44100.0
 frame_size  = 512
 step_size   = 256
 
-watermark   = '01001110110111001101011101010101011110010101010101010101010101010101'
+watermark   = '0100111011011100110101110101010101'
 U           = 4    #no of frames per unit
 B           = 10   #no of units per block
 Bits_Block  = 2    #no of bits per block
@@ -102,14 +102,14 @@ def silenceRemoval(x,smoothWindow=0.5, Weight=0.5, plot=True , silenceRemoval_tu
     #the features are --> zero crossing rate , short-term energy , short-term entropy of energy , spectral centroid and spread
     #spectral entropy,spectral flux,spectral rolloff,stMFCC,chromaF,chromaF.std
     if(silenceRemoval_turnon == 1):
-        ShortTermFeatures = rd.stFeatureExtraction(x,Fs,frame_size,step_size)        # extract short-term features
+        ShortTermFeatures = enc_SilRem.stFeatureExtraction(x,Fs,frame_size,step_size)        # extract short-term features
         # ShortTermFeatures.shape[0]=34 (no of features extracted)
         # ShortTermFeatures.shape[1] = 1024 (no of sets of data)
 
         # Step 2: train binary SVM classifier of low vs high energy frames
         EnergySt = ShortTermFeatures[1, :]                  # keep only the energy short-term sequence (2nd feature)
         E = numpy.sort(EnergySt)                            # sort the energy feature values:
-        L1 = int(len(E) / 10)                               # number of 20% of the total short-term windows
+        L1 = int(len(E) / 2)                               # number of 20% of the total short-term windows
         T1 = numpy.mean(E[0:L1])                            # compute "lower" 10% energy threshold
         T2 = numpy.mean(E[-L1:-1])                          # compute "higher" 10% energy threshold
         #high energy class
@@ -118,9 +118,9 @@ def silenceRemoval(x,smoothWindow=0.5, Weight=0.5, plot=True , silenceRemoval_tu
         Class2 = ShortTermFeatures[:, numpy.where(EnergySt >= T2)[0]]         # get all features that correspond to high energy
         featuresSS = [Class1.T, Class2.T]   
         # form the binary classification task and ...
-        [featuresNormSS, MEANSS, STDSS] = rd.normalizeFeatures(featuresSS)   # normalize and ...
+        [featuresNormSS, MEANSS, STDSS] = enc_SilRem.normalizeFeatures(featuresSS)   # normalize and ...
         # print  featuresNormSS
-        SVM = rd.trainSVM(featuresNormSS, 1.0)# train the respective SVM probabilistic model (ONSET vs SILENCE)
+        SVM = enc_SilRem.trainSVM(featuresNormSS, 1.0)# train the respective SVM probabilistic model (ONSET vs SILENCE)
 
         # print "SVM=",SVM
         # Step 3: compute onset probability based on the trained SVM
@@ -136,7 +136,7 @@ def silenceRemoval(x,smoothWindow=0.5, Weight=0.5, plot=True , silenceRemoval_tu
         Nt = ProbOnsetSorted.shape[0] / 10
         T = (numpy.mean((1 - Weight) * ProbOnsetSorted[0:Nt]) + Weight * numpy.mean(ProbOnsetSorted[-Nt::]))
 
-        MaxIdx = numpy.where(ProbOnset > T)[0]                         # get the indices of the frames that satisfy the thresholding
+        MaxIdx = (numpy.where(EnergySt >= E[-L1])[0])                         # get the indices of the frames that satisfy the thresholding
         i = 0
         timeClusters = []
         segmentLimits = []
@@ -200,8 +200,8 @@ def expand_bits(watermark_bits):
     return bits_expand
 
 
-file             = 'output.wav'
-rate,data        = rd1.dataread(file)
+file             = 'input.wav'
+rate,data        = enc_Wat.dataread(file)
 data             = stereo2mono(data)                        # convert to mono
 watermarked_data = numpy.empty(len(data))
 watermarked_data = 1*data
@@ -235,7 +235,7 @@ for i in range(len(segment_limits)):
             start1  = int(floor((total_blocks_watermarked+j)*Bits_Block))
             end1    = int(floor(((total_blocks_watermarked+j)*Bits_Block)+Bits_Block))
             watermark_expanded = expand_bits(watermark[start1:end1])
-            return_data = rd1.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
+            return_data = enc_Wat.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
             for k in range(start,end):
                 watermarked_data[k] = return_data[k-start]
         total_blocks_watermarked = total_blocks_watermarked+no_blocks_segment
@@ -247,7 +247,7 @@ for i in range(len(segment_limits)):
             start1  = int(floor((total_blocks_watermarked+j)*Bits_Block))
             end1    = int(floor(((total_blocks_watermarked+j)*Bits_Block)+Bits_Block))
             watermark_expanded = expand_bits(watermark[start1:end1])
-            return_data = rd1.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
+            return_data = enc_Wat.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
             for k in range(start,end):
                 watermarked_data[k] = return_data[k-start]
         print 'Watermarking Done'
@@ -256,7 +256,7 @@ for i in range(len(segment_limits)):
 if(c==0):
     print 'Insufficient data to watermark bits in'
 
-rd1.datawrite('output.wav',rate,watermarked_data)
+enc_Wat.datawrite('output.wav',rate,watermarked_data)
 
 # TODO - explore using ICA for this separation
 watermarked_data = numpy.array(watermarked_data,dtype=float)
