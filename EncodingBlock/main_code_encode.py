@@ -107,35 +107,9 @@ def silenceRemoval(x,smoothWindow=0.5, Weight=0.5, plot=True , silenceRemoval_tu
         # ShortTermFeatures.shape[1] = 1024 (no of sets of data)
 
         # Step 2: train binary SVM classifier of low vs high energy frames
-        EnergySt = ShortTermFeatures[1, :]                  # keep only the energy short-term sequence (2nd feature)
+        EnergySt = ShortTermFeatures[:]                  # keep only the energy short-term sequence (2nd feature)
         E = numpy.sort(EnergySt)                            # sort the energy feature values:
-        L1 = int(len(E) / 2)                               # number of 20% of the total short-term windows
-        T1 = numpy.mean(E[0:L1])                            # compute "lower" 10% energy threshold
-        T2 = numpy.mean(E[-L1:-1])                          # compute "higher" 10% energy threshold
-        #high energy class
-        Class1 = ShortTermFeatures[:, numpy.where(EnergySt <= T1)[0]]         # get all features that correspond to low energy
-        #low energy class
-        Class2 = ShortTermFeatures[:, numpy.where(EnergySt >= T2)[0]]         # get all features that correspond to high energy
-        featuresSS = [Class1.T, Class2.T]   
-        # form the binary classification task and ...
-        [featuresNormSS, MEANSS, STDSS] = enc_SilRem.normalizeFeatures(featuresSS)   # normalize and ...
-        # print  featuresNormSS
-        SVM = enc_SilRem.trainSVM(featuresNormSS, 1.0)# train the respective SVM probabilistic model (ONSET vs SILENCE)
-
-        # print "SVM=",SVM
-        # Step 3: compute onset probability based on the trained SVM
-        ProbOnset = []
-        for i in range(ShortTermFeatures.shape[1]):                    # for each frame
-            curFV = (ShortTermFeatures[:, i] - MEANSS) / STDSS         # normalize feature vector
-            ProbOnset.append(SVM.predict_proba(curFV.reshape(1,-1))[0][1])           # get SVM probability (that it belongs to the ONSET class)
-        ProbOnset = numpy.array(ProbOnset)
-        ProbOnset = smoothMovingAvg(ProbOnset, smoothWindow / stStep)  # smooth probability
-
-        # Step 4A: detect onset frame indices:
-        ProbOnsetSorted = numpy.sort(ProbOnset)                        # find probability Threshold as a weighted average of top 10% and lower 10% of the values
-        Nt = ProbOnsetSorted.shape[0] / 10
-        T = (numpy.mean((1 - Weight) * ProbOnsetSorted[0:Nt]) + Weight * numpy.mean(ProbOnsetSorted[-Nt::]))
-
+        L1 = int(len(E) / 2)                               # number of 50% of the total short-term windows
         MaxIdx = (numpy.where(EnergySt >= E[-L1])[0])                         # get the indices of the frames that satisfy the thresholding
         i = 0
         timeClusters = []
@@ -168,18 +142,12 @@ def silenceRemoval(x,smoothWindow=0.5, Weight=0.5, plot=True , silenceRemoval_tu
         # if plot:
         #     timeX = numpy.arange(0, x.shape[0] / float(Fs), 1.0 / Fs)
 
-        #     plt.subplot(2, 1, 1)
+        #     plt.subplot(1, 1, 1)
         #     plt.plot(timeX, x)
         #     for s in segmentLimits:
         #         plt.axvline(x=s[0])
         #         plt.axvline(x=s[1])
-        #     plt.subplot(2, 1, 2)
-        #     plt.plot(numpy.arange(0, ProbOnset.shape[0] * stStep, stStep), ProbOnset)
         #     plt.title('Signal')
-        #     for s in segmentLimits:
-        #         plt.axvline(x=s[0])
-        #         plt.axvline(x=s[1])
-        #     plt.title('SVM Probability')
         #     plt.show()
         # plotting_end
         return segmentLimits
