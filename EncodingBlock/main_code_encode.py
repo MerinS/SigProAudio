@@ -47,16 +47,16 @@ Positions_srambled = [18, 123, 33, 1, 132, 49, 21, 46, 3, 97, 20, 47, 44, 135, 1
 
 
 def stereo2mono(x):
-	'''
-	This function converts the input signal (stored in a numpy array) to MONO (if it is STEREO)
-	'''
-	if x.ndim==1:
-		return x
-	else:
-		if x.ndim==2:
-			return ( (x[:,1] / 2) + (x[:,0] / 2) )
-		else:
-			return -1
+    '''
+    This function converts the input signal (stored in a numpy array) to MONO (if it is STEREO)
+    '''
+    if x.ndim==1:
+        return x
+    else:
+        if x.ndim==2:
+            return ( (x[:,1] / 2) + (x[:,0] / 2) )
+        else:
+            return -1
 
 """ General utility functions """
 def smoothMovingAvg(inputSignal, windowLen=11):
