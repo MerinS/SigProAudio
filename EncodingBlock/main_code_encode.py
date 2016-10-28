@@ -226,7 +226,7 @@ if(c==0):
 
 enc_Wat.datawrite('output.wav',rate,watermarked_data)
 
-# TODO - explore using ICA for this separation
+# TODO - explore using ICA for watermark decoding
 watermarked_data = numpy.array(watermarked_data,dtype=float)
 
 # comparison of the watermarked and the original signal
