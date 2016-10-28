@@ -31,7 +31,7 @@ U                    = 4    #no of frames per unit
 B                    = 10   #no of units per block
 mfccfilterbank_index = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 15, 16, 19, 20, 23, 25, 28, 30, 35, 37, 43, 46, 53, 57, 65, 70, 80]
 Num_subbands         = 14
-watermark_strength   = 10
+watermark_strength   = 5
 
 frame_size           = 512
 duration_block_point = B*U*frame_size/(2.0)
@@ -351,7 +351,6 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
         global_mask      = globalMaskingThreshold(P,v,mask_indices,len(v))
         min_mask         = minMaskingThreshold(global_mask)
         min_mask_factors = minMaskFill(min_mask,parameter)
-        
         # Recon_store      = numpy.empty(Step+1,dtype=complex)
         # for i in range(1,Step+1):
         #     SIN            = expandedbits[i-1]*min_mask_factors[i-1]*numpy.sin(Xangle[i])
