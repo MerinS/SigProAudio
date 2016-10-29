@@ -12,9 +12,9 @@ Fs          = 44100.0
 frame_size  = 512
 step_size   = 256
 
-watermark   = '0100111011011100110101110101010101'
+watermark   = '01001110110111001101011101010101010100101100101001001110'
 U           = 4    #no of frames per unit
-B           = 10   #no of units per block
+B           = 5    #no of units per block
 Bits_Block  = 2    #no of bits per block
 Tiles_bits  = 20
 Sync_bits   = 100
