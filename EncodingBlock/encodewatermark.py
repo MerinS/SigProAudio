@@ -29,9 +29,10 @@ criticaldefn         = [1, 2, 3, 4, 5, 7, 8, 10, 12, 14, 16, 19, 21, 25, 29, 34,
 # multiplier for the frames, B frames per unit, implies, 4 elements
 C                    = [1,1,-1,-1]
 U                    = 4    #no of frames per unit
-B                    = 10   #no of units per block
-mfccfilterbank_index = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 15, 16, 19, 20, 23, 25, 28, 30, 35, 37, 43, 46, 53, 57, 65, 70, 80]
-Num_subbands         = 14
+B                    = 5    #no of units per block
+filtbank_ind_scramble= [52 , 56 , 22 , 26 , 7 , 11 , 122 , 130 , 88 , 93 , 140 , 148 , 107 , 113 , 182 , 194 , 160 , 170 , 37 , 41 , 57 , 61 , 12 , 16 , 94 , 99 , 82 , 87 , 47 , 51 , 72 , 76 , 100 , 106 , 27 , 31 , 77 , 81 , 32 , 36 , 131 , 139 , 149 , 159 , 171 , 181 , 17 , 21 , 67 , 71 , 114 , 121 , 62 , 66 , 42 , 46]
+filtbank_ind         = [7 , 11 , 12 , 16 , 17 , 21 , 22 , 26 , 27 , 31 , 32 , 36 , 37 , 41 , 42 , 46 , 47 , 51 , 52 , 56 , 57 , 61 , 62 , 66 , 67 , 71 , 72 , 76 , 77 , 81 , 82 , 87 , 88 , 93 , 94 , 99 , 100 , 106 , 107 , 113 , 114 , 121 , 122 , 130 , 131 , 139 , 140 , 148 , 149 , 159 , 160 , 170 , 171 , 181 , 182 , 194]
+Num_subbands         = 28
 watermark_strength   = 5
 
 frame_size           = 512
@@ -63,6 +64,7 @@ def datawrite(filename,rate,data):
         sys.exit()
 
 # Block to expand the bits obtained from the bit-expand block
+# TODO-REDO
 def signexpanded(PNseq,N_unit,factor):
     tmp = []
     for i in range(Num_subbands):
@@ -73,9 +75,8 @@ def signexpanded(PNseq,N_unit,factor):
         sign.append(1)
 
     for i in range(Num_subbands):
-        for j in range(2*i,(2*i)+1):
+        for j in range(filtbank_ind_scramble[2*i],filtbank_ind_scramble[(2*i)+1]):
             sign[j]=tmp[i];
-    
     return sign
 
 # Unused as the values of Fs and Win are fixed, the freq array is known
@@ -382,7 +383,7 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
 
         # Writing in the info from the psycho acoustic model along with the current frame and the output of the prev iteration.
         for i in range(Step):        
-            return_signal[curPos+i] = prev_watermark[Step+i]+hann_watermark[i]+signal[curPos+i]
+            return_signal[curPos+i] = prev_watermark[Step+i]+(hann_watermark[i]/float(Win))+signal[curPos+i]
         
         # save the prev values
         for i in range(Win):
