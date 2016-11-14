@@ -29,7 +29,7 @@ criticaldefn         = [1, 2, 3, 4, 5, 7, 8, 10, 12, 14, 16, 19, 21, 25, 29, 34,
 # multiplier for the frames, B frames per unit, implies, 4 elements
 C                    = [1,1,-1,-1]
 U                    = 4    #no of frames per unit
-B                    = 5    #no of units per block
+B                    = 10    #no of units per block
 filtbank_ind_scramble= [52 , 56 , 22 , 26 , 7 , 11 , 122 , 130 , 88 , 93 , 140 , 148 , 107 , 113 , 182 , 194 , 160 , 170 , 37 , 41 , 57 , 61 , 12 , 16 , 94 , 99 , 82 , 87 , 47 , 51 , 72 , 76 , 100 , 106 , 27 , 31 , 77 , 81 , 32 , 36 , 131 , 139 , 149 , 159 , 171 , 181 , 17 , 21 , 67 , 71 , 114 , 121 , 62 , 66 , 42 , 46]
 filtbank_ind         = [7 , 11 , 12 , 16 , 17 , 21 , 22 , 26 , 27 , 31 , 32 , 36 , 37 , 41 , 42 , 46 , 47 , 51 , 52 , 56 , 57 , 61 , 62 , 66 , 67 , 71 , 72 , 76 , 77 , 81 , 82 , 87 , 88 , 93 , 94 , 99 , 100 , 106 , 107 , 113 , 114 , 121 , 122 , 130 , 131 , 139 , 140 , 148 , 149 , 159 , 160 , 170 , 171 , 181 , 182 , 194]
 Num_subbands         = 28
@@ -351,7 +351,7 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
         Xabslog_norm,parameter = SPL_normalise(Xabslog,Win)
        
         # expand the PN bits with sign, expanded bits has a size of 256
-        expandedbits = signexpanded(watermarkbits_expanded,countUnits,float(C[countFrames]))
+        expandedbits     = signexpanded(watermarkbits_expanded,countUnits,float(C[countFrames]))
 
         P,v              = tonal_markers_sound(Xabslog_norm[:(Win/2)+1],(Win/2)+1)
         
