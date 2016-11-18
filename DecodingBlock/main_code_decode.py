@@ -1,5 +1,5 @@
 import decoder_silence_removal as dec_SilRem
-import detectwatermark as det_wat
+import decodewatermark as dec_wat
 import numpy
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft
@@ -18,12 +18,9 @@ B           = 10   #no of units per block
 Bits_Block  = 2    #no of bits per block
 Tiles_bits  = 20
 Sync_bits   = 100
-Total_tiles = 140
-# no of tiles to watermark 10*14 = 140
-# 2*20=40 watermark and 100 sync bits 
-PRN                = [1, 1, 1, -1, -1, 1, 1, -1, 1, 1, 1, -1, 1, -1, -1, 1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, 1, 1, -1, 1, -1, 1, 1, 1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, -1, -1, 1, -1, -1, -1, -1, -1, -1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, 1, 1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, 1, -1, 1, -1, -1, -1, 1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, -1, -1, 1, -1, 1, -1, -1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, 1, -1, -1, -1, 1, -1, 1, 1, 1, -1, -1, -1, 1, -1, -1, 1, 1, 1, -1]
-Positions          = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139]
-Positions_srambled = [18, 123, 33, 1, 132, 49, 21, 46, 3, 97, 20, 47, 44, 135, 114, 104, 25, 75, 41, 58, 117, 88, 22, 77, 120, 102, 133, 8, 63, 83, 99, 109, 42, 53, 108, 69, 23, 38, 115, 71, 128, 11, 68, 59, 35, 91, 137, 29, 98, 111, 62, 5, 87, 92, 51, 93, 119, 116, 96, 40, 125, 118, 134, 76, 122, 136, 26, 101, 4, 107, 15, 78, 55, 129, 86, 103, 106, 131, 67, 130, 70, 36, 61, 121, 82, 45, 14, 127, 37, 81, 24, 16, 138, 65, 60, 7, 0, 73, 28, 112, 32, 110, 9, 13, 100, 19, 89, 105, 90, 31, 94, 30, 12, 64, 80, 139, 43, 79, 6, 84, 72, 57, 66, 74, 27, 52, 2, 126, 54, 34, 10, 124, 50, 48, 39, 113, 85, 56, 17, 95]
+Total_tiles = 280
+# no of tiles to watermark 10*28 = 140
+# 2*50=100 watermark and 180 sync bits 
 
 # length= 525200 and countFrames= 1024
 # MER
@@ -102,41 +99,11 @@ def silenceRemoval(x,smoothWindow=0.5, Weight=0.5, plot=True , silenceRemoval_tu
     #the features are --> zero crossing rate , short-term energy , short-term entropy of energy , spectral centroid and spread
     #spectral entropy,spectral flux,spectral rolloff,stMFCC,chromaF,chromaF.std
     if(silenceRemoval_turnon == 1):
-        ShortTermFeatures = dec_SilRem.stFeatureExtraction(x,Fs,frame_size,step_size)        # extract short-term features
-        # ShortTermFeatures.shape[0]=34 (no of features extracted)
-        # ShortTermFeatures.shape[1] = 1024 (no of sets of data)
-
-        # Step 2: train binary SVM classifier of low vs high energy frames
-        EnergySt = ShortTermFeatures[1, :]                  # keep only the energy short-term sequence (2nd feature)
+        EnergySt = dec_SilRem.stFeatureExtraction(x,Fs,frame_size,step_size)        
+        # extract short-term features
         E = numpy.sort(EnergySt)                            # sort the energy feature values:
-        L1 = int(len(E) / 10)                               # number of 20% of the total short-term windows
-        T1 = numpy.mean(E[0:L1])                            # compute "lower" 10% energy threshold
-        T2 = numpy.mean(E[-L1:-1])                          # compute "higher" 10% energy threshold
-        #high energy class
-        Class1 = ShortTermFeatures[:, numpy.where(EnergySt <= T1)[0]]         # get all features that correspond to low energy
-        #low energy class
-        Class2 = ShortTermFeatures[:, numpy.where(EnergySt >= T2)[0]]         # get all features that correspond to high energy
-        featuresSS = [Class1.T, Class2.T]   
-        # form the binary classification task and ...
-        [featuresNormSS, MEANSS, STDSS] = dec_SilRem.normalizeFeatures(featuresSS)   # normalize and ...
-        # print  featuresNormSS
-        SVM = dec_SilRem.trainSVM(featuresNormSS, 1.0)# train the respective SVM probabilistic model (ONSET vs SILENCE)
-
-        # print "SVM=",SVM
-        # Step 3: compute onset probability based on the trained SVM
-        ProbOnset = []
-        for i in range(ShortTermFeatures.shape[1]):                    # for each frame
-            curFV = (ShortTermFeatures[:, i] - MEANSS) / STDSS         # normalize feature vector
-            ProbOnset.append(SVM.predict_proba(curFV.reshape(1,-1))[0][1])           # get SVM probability (that it belongs to the ONSET class)
-        ProbOnset = numpy.array(ProbOnset)
-        ProbOnset = smoothMovingAvg(ProbOnset, smoothWindow / stStep)  # smooth probability
-
-        # Step 4A: detect onset frame indices:
-        ProbOnsetSorted = numpy.sort(ProbOnset)                        # find probability Threshold as a weighted average of top 10% and lower 10% of the values
-        Nt = ProbOnsetSorted.shape[0] / 10
-        T = (numpy.mean((1 - Weight) * ProbOnsetSorted[0:Nt]) + Weight * numpy.mean(ProbOnsetSorted[-Nt::]))
-
-        MaxIdx = numpy.where(ProbOnset > T)[0]                         # get the indices of the frames that satisfy the thresholding
+        L1 = int(len(E) / 2)                               # number of 50% of the total short-term windows
+        MaxIdx = (numpy.where(EnergySt >= E[-L1])[0])                         # get the indices of the frames that satisfy the thresholding
         i = 0
         timeClusters = []
         segmentLimits = []
@@ -186,22 +153,8 @@ def silenceRemoval(x,smoothWindow=0.5, Weight=0.5, plot=True , silenceRemoval_tu
     else:
         return x
 
-def expand_bits(watermark_bits):
-    bits_expand = numpy.empty(Total_tiles)
-    for i in range(Bits_Block):
-        if(watermark_bits[i]== '0'):
-            dummy = -1
-        elif(watermark_bits[i]== '1'):
-            dummy = 1
-        for j in range(Tiles_bits):
-            bits_expand[int(Positions_srambled[(i*Tiles_bits)+j])] = float(PRN[(i*Tiles_bits)+j])*float(dummy)
-    for i in range(Bits_Block*Tiles_bits,Total_tiles):
-        bits_expand[int(Positions_srambled[i])] = PRN[i];
-    return bits_expand
-
-
 file             = 'output.wav'
-rate,data        = det_wat.dataread(file)
+rate,data        = dec_wat.dataread(file)
 data             = stereo2mono(data)                        # convert to mono
 watermarked_data = numpy.empty(len(data))
 watermarked_data = 1*data
@@ -211,11 +164,9 @@ watermarked_data = 1*data
 # silence frames from the audio
 segment_limits = silenceRemoval(data,1)
 no_blocks      = len(watermark)/Bits_Block
-duration_block = B*U*frame_size/(Fs*(2.0))
+duration_block = ((B*U)+1)*frame_size/(Fs*(2.0))
+duration_block_points = int(duration_block*Fs)
 duration_frame = frame_size/Fs     
-
-print segment_limits
-sys.exit()
 
 # TODO - iteration for modifying the leeway involved in watermarking
 # the audio in such a way that the segment limits get increased.
@@ -228,27 +179,18 @@ for i in range(len(segment_limits)):
     no_blocks_segment = int((segment_limits[i][1]-segment_limits[i][0])/duration_block) 
     if(total_blocks_watermarked+no_blocks_segment<no_blocks):
         for j in range(no_blocks_segment-1):
-            offset  = j*duration_block
-            start   = int(floor((segment_limits[i][0]+offset)*Fs))
-            end     = int(floor(((segment_limits[i][0]+offset)+duration_block)*Fs))
-            start1  = int(floor((total_blocks_watermarked+j)*Bits_Block))
-            end1    = int(floor(((total_blocks_watermarked+j)*Bits_Block)+Bits_Block))
-            watermark_expanded = expand_bits(watermark[start1:end1])
-            return_data = det_wat.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
-            for k in range(start,end):
-                watermarked_data[k] = return_data[k-start]
+            offset        = j*duration_block
+            start         = int(floor((segment_limits[i][0]+offset)*Fs))
+            end           = int(floor(((segment_limits[i][0]+offset)*Fs)+(duration_block_points+)))   
+            bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)
+            
         total_blocks_watermarked = total_blocks_watermarked+no_blocks_segment
     else:
         for j in range(no_blocks-1-total_blocks_watermarked):
-            offset  = j*duration_block
-            start   = int(floor((segment_limits[i][0]+offset)*Fs))
-            end     = int(floor(((segment_limits[i][0]+offset)+duration_block)*Fs))
-            start1  = int(floor((total_blocks_watermarked+j)*Bits_Block))
-            end1    = int(floor(((total_blocks_watermarked+j)*Bits_Block)+Bits_Block))
-            watermark_expanded = expand_bits(watermark[start1:end1])
-            return_data = det_wat.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
-            for k in range(start,end):
-                watermarked_data[k] = return_data[k-start]
+            offset        = j*duration_block
+            start         = int(floor((segment_limits[i][0]+offset)*Fs))
+            end           = int(floor(((segment_limits[i][0]+offset)*Fs)+duration_block_points))
+            bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)            
         print 'Watermarking Done'
         c = 1    
         break
