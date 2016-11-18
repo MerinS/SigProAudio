@@ -165,21 +165,19 @@ def expand_bits(watermark_bits):
 file             = 'input.wav'
 rate,data        = enc_Wat.dataread(file)
 data             = stereo2mono(data)                        # convert to mono
-watermarked_data = numpy.empty(len(data))
+N                = len(data)
+watermarked_data = numpy.empty(N)
 watermarked_data = 1*data
 # once can either choose to do silence detection and removal, in which case
 # the resulting watermarked audio will be so much more better in quality
 # the last argument is made one if and only if there is a need to remove 
 # silence frames from the audio
 segment_limits = silenceRemoval(data,1)
-print segment_limits
 no_blocks      = len(watermark)/Bits_Block
 duration_block = ((B*U)+1)*frame_size/(Fs*(2.0))
 duration_block_points = int(duration_block*Fs)
-duration_frame = frame_size/Fs     
-
-# print segment_limits
-# sys.exit()
+duration_frame = frame_size/float(Fs)
+duration_file  = N/float(Fs)
 
 # TODO - iteration for modifying the leeway involved in watermarking
 # the audio in such a way that the segment limits get increased.
@@ -190,32 +188,33 @@ c  = 0
 for i in range(len(segment_limits)):
     # figures out the no of blocks within a non silent segment
     no_blocks_segment = int((segment_limits[i][1]-segment_limits[i][0])/duration_block) 
-    if(total_blocks_watermarked+no_blocks_segment<no_blocks):
-        for j in range(no_blocks_segment):
-            offset  = j*duration_block
-            start   = int(floor((segment_limits[i][0]+offset)*Fs))
-            end     = start+duration_block_points
-            start1  = int(floor((total_blocks_watermarked+j)*Bits_Block))
-            end1    = int(floor(((total_blocks_watermarked+j)*Bits_Block)+Bits_Block))
-            watermark_expanded = expand_bits(watermark[start1:end1])
-            return_data = enc_Wat.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
-            for k in range(start,end):
-                watermarked_data[k] = return_data[k-start]
-        total_blocks_watermarked = total_blocks_watermarked+no_blocks_segment
-    else:
-        for j in range(no_blocks-1-total_blocks_watermarked):
-            offset  = j*duration_block
-            start   = int(floor((segment_limits[i][0]+offset)*Fs))
-            end     = start+duration_block_points
-            start1  = int(floor((total_blocks_watermarked+j)*Bits_Block))
-            end1    = int(floor(((total_blocks_watermarked+j)*Bits_Block)+Bits_Block))
-            watermark_expanded = expand_bits(watermark[start1:end1])
-            return_data = enc_Wat.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
-            for k in range(start,end):
-                watermarked_data[k] = return_data[k-start]
-        print 'Watermarking Done'
-        c = 1    
-        break
+    if(((segment_limits[i][1]-segment_limits[i][0]+(no_blocks_segment*duration_block))>duration_frame) or (segment_limits[i][1]+duration_frame<duration_file)):
+        if(total_blocks_watermarked+no_blocks_segment<no_blocks):
+            for j in range(no_blocks_segment):
+                offset  = j*duration_block
+                start   = int(floor((segment_limits[i][0]+offset)*Fs))
+                end     = start+duration_block_points
+                start1  = int(floor((total_blocks_watermarked+j)*Bits_Block))
+                end1    = int(floor(((total_blocks_watermarked+j)*Bits_Block)+Bits_Block))
+                watermark_expanded = expand_bits(watermark[start1:end1])
+                return_data = enc_Wat.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
+                for k in range(start,end):
+                    watermarked_data[k] = return_data[k-start]
+            total_blocks_watermarked = total_blocks_watermarked+no_blocks_segment
+        else:
+            for j in range(no_blocks-1-total_blocks_watermarked):
+                offset  = j*duration_block
+                start   = int(floor((segment_limits[i][0]+offset)*Fs))
+                end     = start+duration_block_points
+                start1  = int(floor((total_blocks_watermarked+j)*Bits_Block))
+                end1    = int(floor(((total_blocks_watermarked+j)*Bits_Block)+Bits_Block))
+                watermark_expanded = expand_bits(watermark[start1:end1])
+                return_data = enc_Wat.watermarking_block(data[start:end],watermark_expanded,Fs,frame_size,step_size)
+                for k in range(start,end):
+                    watermarked_data[k] = return_data[k-start]
+            print 'Watermarking Done'
+            c = 1    
+            break
 if(c==0):
     print 'Insufficient data to watermark bits in'
 
