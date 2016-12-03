@@ -12,7 +12,7 @@ Fs          = 44100.0
 frame_size  = 512
 step_size   = 256
 
-watermark   = '010011101101110011010111010101'
+watermark   = '010011101101110011010111010101'              
 U           = 4    #no of frames per unit
 B           = 10    #no of units per block
 Bits_Block  = 2    #no of bits per block
@@ -188,7 +188,7 @@ c  = 0
 for i in range(len(segment_limits)):
     # figures out the no of blocks within a non silent segment
     no_blocks_segment = int((segment_limits[i][1]-segment_limits[i][0])/duration_block) 
-    if(((segment_limits[i][1]-segment_limits[i][0]+(no_blocks_segment*duration_block))>duration_frame) or (segment_limits[i][1]+duration_frame<duration_file)):
+    if(((segment_limits[i][1]-(segment_limits[i][0]+(no_blocks_segment*duration_block)))>duration_frame) or (segment_limits[i][1]+duration_frame<duration_file)):
         if(total_blocks_watermarked+no_blocks_segment<no_blocks):
             for j in range(no_blocks_segment):
                 offset  = j*duration_block
