@@ -155,8 +155,9 @@ def silenceRemoval(x,smoothWindow=0.5, Weight=0.5, plot=True , silenceRemoval_tu
 
 file             = 'output.wav'
 rate,data        = dec_wat.dataread(file)
-data             = stereo2mono(data)                        # convert to mono
-watermarked_data = numpy.empty(len(data))
+data             = stereo2mono(data)  # convert to mono
+N                = len(data)
+watermarked_data = numpy.empty(N)                        
 watermarked_data = 1*data
 # once can either choose to do silence detection and removal, in which case
 # the resulting watermarked audio will be so much more better in quality
@@ -166,7 +167,8 @@ segment_limits = silenceRemoval(data,1)
 no_blocks      = len(watermark)/Bits_Block
 duration_block = ((B*U)+1)*frame_size/(Fs*(2.0))
 duration_block_points = int(duration_block*Fs)
-duration_frame = frame_size/Fs     
+duration_frame = frame_size/Fs  
+duration_file  = N/float(Fs)   
 
 # TODO - iteration for modifying the leeway involved in watermarking
 # the audio in such a way that the segment limits get increased.
@@ -177,23 +179,23 @@ c  = 0
 for i in range(len(segment_limits)):
     # figures out the no of blocks within a non silent segment
     no_blocks_segment = int((segment_limits[i][1]-segment_limits[i][0])/duration_block) 
-    if(total_blocks_watermarked+no_blocks_segment<no_blocks):
-        for j in range(no_blocks_segment-1):
-            offset        = j*duration_block
-            start         = int(floor((segment_limits[i][0]+offset)*Fs))
-            end           = int(floor(((segment_limits[i][0]+offset)*Fs)+(duration_block_points+)))   
-            bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)
-            
-        total_blocks_watermarked = total_blocks_watermarked+no_blocks_segment
-    else:
-        for j in range(no_blocks-1-total_blocks_watermarked):
-            offset        = j*duration_block
-            start         = int(floor((segment_limits[i][0]+offset)*Fs))
-            end           = int(floor(((segment_limits[i][0]+offset)*Fs)+duration_block_points))
-            bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)            
-        print 'Watermarking Done'
-        c = 1    
-        break
+    if(((segment_limits[i][1]-(segment_limits[i][0]+(no_blocks_segment*duration_block)))>duration_frame) or (segment_limits[i][1]+duration_frame<duration_file)):
+        if(total_blocks_watermarked+no_blocks_segment<no_blocks):
+            for j in range(no_blocks_segment-1):
+                offset        = j*duration_block
+                start         = int(floor((segment_limits[i][0]+offset)*Fs))
+                end           = int(floor(((segment_limits[i][0]+offset)*Fs)+duration_block_points+frame_size))   
+                bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)            
+            total_blocks_watermarked = total_blocks_watermarked+no_blocks_segment
+        else:
+            for j in range(no_blocks-1-total_blocks_watermarked):
+                offset        = j*duration_block
+                start         = int(floor((segment_limits[i][0]+offset)*Fs))
+                end           = int(floor(((segment_limits[i][0]+offset)*Fs)+duration_block_points+frame_size))
+                bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)            
+            print 'Watermarking Done'
+            c = 1    
+            break
 if(c==0):
     print 'Insufficient data to watermark bits in'
 
