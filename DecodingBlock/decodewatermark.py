@@ -8,10 +8,6 @@ from scipy.fftpack.realtransforms import dct
 from math import pow,exp
 # from constants import TH
 N_SUBBAND = 8
-
-Win                  = 512
-HalfWin              = 256
-
 #critical definitions, ie the index of the frequency array that has 
 #the frequency closest to the corresponding critical band rate
 #in bark
@@ -26,6 +22,7 @@ filtbank_ind_scramble= [52 , 56 , 22 , 26 , 7 , 11 , 122 , 130 , 88 , 93 , 140 ,
 filtbank_ind         = [7 , 11 , 12 , 16 , 17 , 21 , 22 , 26 , 27 , 31 , 32 , 36 , 37 , 41 , 42 , 46 , 47 , 51 , 52 , 56 , 57 , 61 , 62 , 66 , 67 , 71 , 72 , 76 , 77 , 81 , 82 , 87 , 88 , 93 , 94 , 99 , 100 , 106 , 107 , 113 , 114 , 121 , 122 , 130 , 131 , 139 , 140 , 148 , 149 , 159 , 160 , 170 , 171 , 181 , 182 , 194]
 
 frame_size           = 512
+Halfframe_size       = 256
 
 U                    = 4    #no of frames per unit
 B                    = 10    #no of units per block
@@ -83,8 +80,8 @@ def hann(wave,length):
     return wave
 
 
-def watermark_decode_block(signal,Fs,Win,Step):
-    Win = int(Win)
+def watermark_decode_block(signal,Fs,frame_size,Step):
+    frame_size = int(frame_size)
     Step = int(Step)
 
     # frequency_array - array of the frequencies in the Freq axis
@@ -107,8 +104,8 @@ def watermark_decode_block(signal,Fs,Win,Step):
     curPos         = 0
     countFrames    = 0
     countUnits     = 0
-    prev_watermark = numpy.zeros(Win)
-    # nFFT        = Win / 2
+    prev_watermark = numpy.zeros(frame_size)
+    # nFFT        = frame_size / 2
     # print 'New Set'
     # print 'len(signal)',len(signal)
     FFT_abs        = []
@@ -116,9 +113,9 @@ def watermark_decode_block(signal,Fs,Win,Step):
     count          = 0
     while (1):                        # for each short-term window until the end of signal
         # take current window
-        x            = signal[curPos:curPos+Win].copy()
+        x            = signal[curPos:curPos+frame_size].copy()
         # hann windowing to allow smooth ends and better concatenation
-        x1           = hann(x,Win)
+        x1           = hann(x,frame_size)
         # FFT is performed of the time window
         Xabslog      = 20*numpy.log10(abs(fft(x1))) 
         
@@ -127,12 +124,12 @@ def watermark_decode_block(signal,Fs,Win,Step):
         curPos+=Step 
         count+=1
         # print curPos
-        if(curPos+Win>duration_block_point):
+        if(curPos+frame_size>duration_block_point+frame_size):
             break
 
-    for i in range(len(FFT_abs)-3):
+    for i in range(count-2):
         FFT_abs[i]=FFT_abs[i]-FFT_abs[i+2]
-    
+
     value_array = numpy.zeros([Num_subbands,(U*B)]) 
 
     for k in range(U*B):
@@ -157,7 +154,7 @@ def watermark_decode_block(signal,Fs,Win,Step):
     #     PN_bits[(i-Bits_Block*Tiles_bits)] = PRN[i]
     #     Positions_bits[(i-Bits_Block*Tiles_bits)] = int(Positions_srambled[i])
 
-    print 'count',count
+    # print 'count',count
     FrameIndicator = numpy.ones(Num_subbands*U*B)
     # U   = 4    #no of frames per unit
     # B   = 10    #no of units per block 
@@ -170,16 +167,21 @@ def watermark_decode_block(signal,Fs,Win,Step):
             if Positions[(i*Num_subbands)+j] in Positions_bits:
                 value = Positions_bits.index(Positions[(i*Num_subbands)+j])
                 p     = int(value/Tiles_bits)
-                print 'units,subbands',i,j
+                # print 'units,subbands',i,j
                 # add a few extra elements to avoid the huge ass sums in the FFT
                 for k in range(U):     
                         Sum_values1[p]+=(value_array[j][((i*U)+k)]*PN_bits[value])
-                        print PN_bits[value],value_array[j][((i*U)+k)]*PN_bits[value],Sum_values1[p]
+                        # print PN_bits[value],value_array[j][((i*U)+k)]*PN_bits[value],Sum_values1[p]
                         Sum_values2[p]+=pow(value_array[j][((i*U)+k)],2)
                         Sum_values3[p]+=1
      
-    print Sum_values1,Sum_values2,Sum_values3
-    sys.exit()
+    # print Sum_values1,Sum_values2,Sum_values3
+    for i in range(len(Sum_values1)):
+        if(Sum_values1[i]>0):
+            print '1',
+        else:
+            print '0',
+    # sys.exit()
     #                 FrameIndicator[(i*U*Num_subbands)+(k*Num_subbands)+j] = PRN[value]
     #             # sys.exit()
 
@@ -199,6 +201,3 @@ def watermark_decode_block(signal,Fs,Win,Step):
     # for i in range(Bits_Block*Tiles_bits,Total_tiles):
     #     bits_expand[int(Positions_srambled[i])] = PRN[i];
     # return bits_expand
-
-        
-    
