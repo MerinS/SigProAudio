@@ -6,6 +6,7 @@ from sklearn.svm import SVC
 from scipy.fftpack import fft,ifft
 from scipy.fftpack.realtransforms import dct
 from math import pow,exp
+import matplotlib.pyplot as plt
 # from constants import TH
 N_SUBBAND         = 32
 samplespersubband = 8
@@ -33,18 +34,19 @@ B                    = 10    #no of units per block
 filtbank_ind_scramble= [52 , 56 , 22 , 26 , 7 , 11 , 122 , 130 , 88 , 93 , 140 , 148 , 107 , 113 , 182 , 194 , 160 , 170 , 37 , 41 , 57 , 61 , 12 , 16 , 94 , 99 , 82 , 87 , 47 , 51 , 72 , 76 , 100 , 106 , 27 , 31 , 77 , 81 , 32 , 36 , 131 , 139 , 149 , 159 , 171 , 181 , 17 , 21 , 67 , 71 , 114 , 121 , 62 , 66 , 42 , 46]
 filtbank_ind         = [7 , 11 , 12 , 16 , 17 , 21 , 22 , 26 , 27 , 31 , 32 , 36 , 37 , 41 , 42 , 46 , 47 , 51 , 52 , 56 , 57 , 61 , 62 , 66 , 67 , 71 , 72 , 76 , 77 , 81 , 82 , 87 , 88 , 93 , 94 , 99 , 100 , 106 , 107 , 113 , 114 , 121 , 122 , 130 , 131 , 139 , 140 , 148 , 149 , 159 , 160 , 170 , 171 , 181 , 182 , 194]
 Num_subbands         = 28
-watermark_strength   = 5
+watermark_strength   = 10
 
 frame_size           = 512
 duration_block_point = B*U*frame_size/(2.0)
 
 # mp3coding relevant points
+# frequency range, bark_mp3, ATH
 frequency_mp3code    = [86.13 , 172.27 , 258.4 , 344.53 , 430.66 , 516.8 , 602.93 , 689.06 , 775.2 , 861.33 , 947.46 , 1033.59 , 1119.73 , 1205.86 , 1291.99 , 1378.13 , 1464.26 , 1550.39 , 1636.52 , 1722.66 , 1808.79 , 1894.92 , 1981.05 , 2067.19 , 2153.32 , 2239.45 , 2325.59 , 2411.72 , 2497.85 , 2583.98 , 2670.12 , 2756.25 , 2842.38 , 2928.52 , 3014.65 , 3100.78 , 3186.91 , 3273.05 , 3359.18 , 3445.31 , 3531.45 , 3617.58 , 3703.71 , 3789.84 , 3875.98 , 3962.11 , 4048.24 , 4134.38 , 4306.64 , 4478.91 , 4651.17 , 4823.44 , 4995.7 , 5167.97 , 5340.23 , 5512.5 , 5684.77 , 5857.03 , 6029.3 , 6201.56 , 6373.83 , 6546.09 , 6718.36 , 6890.63 , 7062.89 , 7235.16 , 7407.42 , 7579.69 , 7751.95 , 7924.22 , 8096.48 , 8268.75 , 8613.28 , 8957.81 , 9302.34 , 9646.88 , 9991.41 , 10335.94 , 10680.47 , 11025.0 , 11369.53 , 11714.06 , 12058.59 , 12403.13 , 12747.66 , 13092.19 , 13436.72 , 13781.25 , 14125.78 , 14470.31 , 14814.84 , 15159.38 , 15503.91 , 15848.44 , 16192.97 , 16537.5 , 16882.03 , 17226.56 , 17571.09 , 17915.63 , 18260.16 , 18604.69 , 18949.22 , 19293.75 , 19638.28 , 19982.81]
 bark_mp3code         = [0.85 , 1.694 , 2.525 , 3.337 , 4.124 , 4.882 , 5.608 , 6.301 , 6.959 , 7.581 , 8.169 , 8.723 , 9.244 , 9.734 , 10.195 , 10.629 , 11.037 , 11.421 , 11.783 , 12.125 , 12.448 , 12.753 , 13.042 , 13.317 , 13.577 , 13.825 , 14.062 , 14.288 , 14.504 , 14.711 , 14.909 , 15.1 , 15.283 , 15.46 , 15.631 , 15.795 , 15.955 , 16.11 , 16.26 , 16.405 , 16.547 , 16.685 , 16.82 , 16.951 , 17.079 , 17.204 , 17.327 , 17.447 , 17.68 , 17.904 , 18.121 , 18.331 , 18.534 , 18.73 , 18.922 , 19.108 , 19.288 , 19.464 , 19.635 , 19.801 , 19.963 , 20.12 , 20.273 , 20.421 , 20.565 , 20.705 , 20.84 , 20.971 , 21.099 , 21.222 , 21.341 , 21.457 , 21.676 , 21.882 , 22.074 , 22.253 , 22.42 , 22.575 , 22.721 , 22.857 , 22.984 , 23.102 , 23.213 , 23.317 , 23.414 , 23.506 , 23.592 , 23.673 , 23.749 , 23.821 , 23.888 , 23.952 , 24.013 , 24.07 , 24.124 , 24.176 , 24.225 , 24.271 , 24.316 , 24.358 , 24.398 , 24.436 , 24.473 , 24.508 , 24.541 , 24.573]
 thresh_quiet_mp3code = [25.87 , 14.85 , 10.72 , 8.5 , 7.1 , 6.11 , 5.37 , 4.79 , 4.32 , 3.92 , 3.57 , 3.25 , 2.95 , 2.67 , 2.39 , 2.11 , 1.83 , 1.53 , 1.23 , 0.9 , 0.56 , 0.21 , -0.17 , -0.56 , -0.96 , -1.38 , -1.79 , -2.21 , -2.63 , -3.03 , -3.41 , -3.77 , -4.09 , -4.37 , -4.6 , -4.78 , -4.91 , -4.97 , -4.98 , -4.92 , -4.81 , -4.65 , -4.43 , -4.17 , -3.87 , -3.54 , -3.19 , -2.82 , -2.06 , -1.32 , -0.64 , -0.04 , 0.47 , 0.89 , 1.23 , 1.51 , 1.74 , 1.93 , 2.11 , 2.28 , 2.46 , 2.63 , 2.82 , 3.03 , 3.25 , 3.49 , 3.74 , 4.02 , 4.32 , 4.64 , 4.98 , 5.35 , 6.15 , 7.07 , 8.1 , 9.25 , 10.54 , 11.97 , 13.56 , 15.31 , 17.23 , 19.34 , 21.64 , 24.15 , 26.88 , 29.84 , 33.05 , 36.52 , 40.25 , 44.27 , 48.59 , 53.22 , 58.18 , 63.49 , 68.0 , 68.0 , 68.0 , 68.0 , 68.0 , 68.0 , 68.0 , 68.0 , 68.0 , 68.0 , 68.0 , 68.0]
 relevant_axis_terms  = [2 , 4 , 6 , 8 , 10 , 12 , 14 , 16 , 18 , 20 , 22 , 24 , 26 , 28 , 30 , 32 , 34 , 36 , 38 , 40 , 42 , 44 , 46 , 48 , 50 , 52 , 54 , 56 , 58 , 60 , 62 , 64 , 66 , 68 , 70 , 72 , 74 , 76 , 78 , 80 , 82 , 84 , 86 , 88 , 90 , 92 , 94 , 96 , 100 , 104 , 108 , 112 , 116 , 120 , 124 , 128 , 132 , 136 , 140 , 144 , 148 , 152 , 156 , 160 , 164 , 168 , 172 , 176 , 180 , 184 , 188 , 192 , 200 , 208 , 216 , 224 , 232 , 240 , 248 , 256 , 264 , 272 , 280 , 288 , 296 , 304 , 312 , 320 , 328 , 336 , 344 , 352 , 360 , 368 , 376 , 384 , 392 , 400 , 408 , 416 , 424 , 432 , 440 , 448 , 456]
 subset_105_mp3code   = [0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 , 10 , 11 , 12 , 13 , 14 , 15 , 16 , 17 , 18 , 19 , 20 , 21 , 22 , 23 , 24 , 25 , 26 , 27 , 28 , 29 , 30 , 31 , 32 , 33 , 34 , 35 , 36 , 37 , 38 , 39 , 40 , 41 , 42 , 43 , 44 , 45 , 46 , 47 , 47 , 48 , 48 , 49 , 49 , 50 , 50 , 51 , 51 , 52 , 52 , 53 , 53 , 54 , 54 , 55 , 55 , 56 , 56 , 57 , 57 , 58 , 58 , 59 , 59 , 60 , 60 , 61 , 61 , 62 , 62 , 63 , 63 , 64 , 64 , 65 , 65 , 66 , 66 , 67 , 67 , 68 , 68 , 69 , 69 , 70 , 70 , 71 , 71 , 71 , 71 , 72 , 72 , 72 , 72 , 73 , 73 , 73 , 73 , 74 , 74 , 74 , 74 , 75 , 75 , 75 , 75 , 76 , 76 , 76 , 76 , 77 , 77 , 77 , 77 , 78 , 78 , 78 , 78 , 79 , 79 , 79 , 79 , 80 , 80 , 80 , 80 , 81 , 81 , 81 , 81 , 82 , 82 , 82 , 82 , 83 , 83 , 83 , 83 , 84 , 84 , 84 , 84 , 85 , 85 , 85 , 85 , 86 , 86 , 86 , 86 , 87 , 87 , 87 , 87 , 88 , 88 , 88 , 88 , 89 , 89 , 89 , 89 , 90 , 90 , 90 , 90 , 91 , 91 , 91 , 91 , 92 , 92 , 92 , 92 , 93 , 93 , 93 , 93 , 94 , 94 , 94 , 94 , 95 , 95 , 95 , 95 , 96 , 96 , 96 , 96 , 97 , 97 , 97 , 97 , 98 , 98 , 98 , 98 , 99 , 99 , 99 , 99 , 100 , 100 , 100 , 100 , 101 , 101 , 101 , 101 , 102 , 102 , 102 , 102 , 103 , 103 , 103 , 103 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104 , 104]
-length_mp3code       = 105
+length_mp3code       = 106
 #read the wave file
 def dataread(filename):
     try:
@@ -127,16 +129,18 @@ def closeto_critical(f):
 
 
 def hann(wave,length):
+    wave_hann = numpy.empty(length)
     for i in range(length):
-        wave[i]=0.81649658092*(1-numpy.cos(2*numpy.pi*i/length))*wave[i]
-    return wave
+        wave_hann[i]=0.81649658092*(1-numpy.cos(2*numpy.pi*i/length))*wave[i]
+    return wave_hann
 
 def SPL_normalise(wave_DB,length):
     maximum_value = max(wave_DB)
+    wave_DB_norm = numpy.empty(length)
     for i in range(length):
-        wave_DB[i]=96-maximum_value+wave_DB[i]
+        wave_DB_norm[i]=96-maximum_value+wave_DB[i]
         # wave_DB[i] = wave_DB[i]
-    return wave_DB,96-maximum_value
+    return wave_DB_norm,96-maximum_value
 
 
 def tonal_markers_sound(wave_DB,length):
@@ -144,10 +148,10 @@ def tonal_markers_sound(wave_DB,length):
     # if (length>252):
     #     length = 252
     val  = numpy.zeros(length)
-    Pval = numpy.empty(length)
+    Pval = numpy.zeros(length)
 
     # Figures if a point is a tonal maxima, allots a value of 1 to tonal and 0 to non tonal and 3 to irrelevant ones
-    for i in range(2,62):
+    for i in range(3,62):
         if(val[i]!=3):
             c = 0
             if(wave_DB[i]-wave_DB[i+2]<7 or wave_DB[i]-wave_DB[i-2]<7):
@@ -155,10 +159,11 @@ def tonal_markers_sound(wave_DB,length):
             if c==0 :
                 val[i] = 1
                 val[i+1] = 3
+                val[i+2] = 3
             else :
                 val[i] = 0
 
-    for i in range(62,126):
+    for i in range(63,127):
         if(val[i] !=3):    
             c = 0
             if(wave_DB[i]-wave_DB[i+2]<7 or wave_DB[i]-wave_DB[i-2]<7 or wave_DB[i]-wave_DB[i+3]<7 or wave_DB[i]-wave_DB[i-3]<7):
@@ -171,7 +176,7 @@ def tonal_markers_sound(wave_DB,length):
             else :
                 val[i] = 0
 
-    for i in range(126,249):
+    for i in range(127,250):
         if(val[i] !=3):
             c = 0
             for j in range(2,7):
@@ -188,7 +193,14 @@ def tonal_markers_sound(wave_DB,length):
             else :
                 val[i] = 0
 
-    for i in range(2,249):
+    # # If at all there is a need to see the tonal peak indexes
+    # Tonal_list = []
+    # for i in range(251):
+    # 	if(val[i]==1):
+    # 		Tonal_list.append(i)
+
+    # combine the dB power values on the left and right of the tonal masker
+    for i in range(3,250):
         if(val[i]==1):
             Pval[i]   = 10*numpy.log10(pow(10,(wave_DB[i-1]/10.0))+pow(10,(wave_DB[i]/10.0))+pow(10,(wave_DB[i+1]/10.0)))
 
@@ -198,7 +210,7 @@ def tonal_markers_sound(wave_DB,length):
     sum1 = 0
     bark_prev = bark_array_int[0]
     for i in range(length):
-        if(val[i]==0):
+        if(val[i]==0 or val[i]==3):
             if(bark_array_int[i]!=bark_prev):
                 Pval[criticaldefn[bark_prev]]=10*numpy.log10(sum1)
                 val[criticaldefn[bark_prev]]=2
@@ -207,9 +219,11 @@ def tonal_markers_sound(wave_DB,length):
             Pval[i] = 0         
             sum1+=pow(10,(wave_DB[i]/10.0))
 
-    # TODO -delete these
-    # for i in range(len(criticaldefn)):
-    #     print criticaldefn[i],Pval[criticaldefn[i]], float_barkarray[criticaldefn[i]],quiet_threshold[criticaldefn[i]]
+    # # If at all there is a need to see the non tonal peak indexes
+    # Non_Tonal_list = []
+    # for i in range(250):
+    # 	if(val[i]==2):
+    # 		Non_Tonal_list.append(i)
 
     # removes the invalid tonal and non tonal markers
     # removes the ones below threshold of hearing and 
@@ -240,17 +254,6 @@ def compute_masking_indices(val,length):
         elif(val[i]==2):
            masking_indices[i]=((-2.025)-(0.175*bark_array_float[i]))
     return masking_indices
-    # 1 -2.17379224196
-    # 3 -2.46688387311
-    # 5 -2.74663618721
-    # 8 -3.12766989924
-    # 14 -3.7284959941
-    # 21 -4.20338323862
-    # 39 -4.87049645039
-    # 56 -5.23291612556
-    # 81 -5.61140135356
-    # 157 -6.15723003434
-
 
 def spreading_function(zmaskee,zmasker,Pmasker):
     z = zmaskee-zmasker
@@ -268,16 +271,16 @@ def spreading_function(zmaskee,zmasker,Pmasker):
         v = ((-17)*z)+(0.15*Pmasker*(z-1))
         c = 4
     if c==0:
-        return -1
+        return 'INVALID'
     if(c==1 or c==2 or c==3 or c==4):
-        return 10**(v/10.0)
+        return v
 
 def tonal_nontonal_threshold(Pval,val,float_barkarray_val,mask_index,length):
     sum_val = 0
     for i in range(length):
-        if ((val[i] ==2 or val[i] ==1) and (i in relevant_axis_terms)):
+        if (val[i] ==2 or val[i] ==1):
             val_spreading_fn = spreading_function(float_barkarray_val,bark_array_float[i],Pval[i])
-            if(val_spreading_fn!=-1):
+            if(val_spreading_fn!= 'INVALID'):
                 l = Pval[i]+mask_index[i]+val_spreading_fn
                 x = 10**(l/10.0)
                 sum_val= sum_val+x
@@ -304,6 +307,8 @@ def minMaskFill(min_mask,parameter):
     fill_min_masker = numpy.ones(HalfWin)
     for i in range(N_SUBBAND):
         fill_min_masker[(samplespersubband*i):samplespersubband*(i+1)] = (pow(10,float((min_mask[i] - parameter)/20))*watermark_strength)
+    	# fill_min_masker[(samplespersubband*i):samplespersubband*(i+1)] = pow(10,float((min_mask[i] - parameter)/20))
+    	# fill_min_masker[(samplespersubband*i):samplespersubband*(i+1)] = min_mask[i]
     return fill_min_masker
 
 def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
@@ -331,51 +336,66 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
     countFrames    = 0
     countUnits     = 0
     prev_watermark = numpy.zeros(Win)
-    # nFFT        = Win / 2
-    # print 'New Set'
-    # print 'len(signal)',len(signal)
     while (1):                        # for each short-term window until the end of signal
         # take current window
-        x            = signal[curPos:curPos+Win].copy()
+        frame        = signal[curPos:curPos+Win].copy()
         # hann windowing to allow smooth ends and better concatenation
-        x1           = hann(x,Win)
+        frame_hann   = hann(frame,HalfWin)
         # FFT is performed of the time window
-        X            = (fft(x1))                                    # get fft magnitude        
+        FFT_frame    = (fft(frame_hann))                                          
         #TODO separate function
         # Magnitude and argument of an FFT
-        Xabs         = abs(X)
-        Xangle       = numpy.angle(X)
-        # normalize fft
-        Xabslog      = 10*numpy.log10(numpy.square(Xabs)/(Win*Win))
+        FFT_mag      = abs(FFT_frame)
+        FFT_angle    = numpy.angle(FFT_frame)
+        # normalize fft to decibel
+        FFTdecibel1  = 10*numpy.log10(numpy.square(FFT_mag))
+        FFTdecibel   = 10*numpy.log10(numpy.square(FFT_mag)/(Win*Win))
+        
+        # default value of 0
+        parameter    = 0
         #TODO examine how needed this is
-        Xabslog_norm,parameter = SPL_normalise(Xabslog,Win)
-       
+        # FFTdecibel,parameter = SPL_normalise(FFTdecibel,Win)        
         # expand the PN bits with sign, expanded bits has a size of 256
         expandedbits     = signexpanded(watermarkbits_expanded,countUnits,float(C[countFrames]))
-
-        P,v              = tonal_markers_sound(Xabslog_norm[:(Win/2)+1],(Win/2)+1)
+        # Imp factor - only indexes till 250 are considered significant for masking, the rest are ignored
+        P,v              = tonal_markers_sound(FFTdecibel[:256],251)
+        
+        # If required to analyse tonal and non tonal components
+        # tonal_x          = []
+        # tonal_y          = []
+        # non_tonal_x      = []
+        # non_tonal_y      = []
+        # for i in range(len(v)):
+        # 	if(v[i]==1):
+        # 		tonal_x.append(i)
+        # 		tonal_y.append(P[i])
+        # 	if(v[i]==2):
+        # 		non_tonal_x.append(i)
+        # 		non_tonal_y.append(P[i])
+	    # plt.scatter(tonal_x,tonal_y,c='r',marker='p',s=25)
+        # plt.scatter(non_tonal_x,non_tonal_y,c='g',marker='s',s=25)
+   
         
         mask_indices     = compute_masking_indices(v,len(v))
-        
         global_mask      = globalMaskingThreshold(P,v,mask_indices,len(v))
-       
         min_mask         = minMaskingThreshold(global_mask)
         min_mask_factors = minMaskFill(min_mask,parameter)
-        # Recon_store      = numpy.empty(Step+1,dtype=complex)
-        # for i in range(1,Step+1):
-        #     SIN            = expandedbits[i-1]*min_mask_factors[i-1]*numpy.sin(Xangle[i])
-        #     COS            = expandedbits[i-1]*min_mask_factors[i-1]*numpy.cos(Xangle[i])
-        #     Recon_store[i] = complex(COS,SIN)
-        # Recon_store[0]= 0
+
+        # plt.figure(1)
+        # plt.title('FFT magnitude in decibel(red) Threshold in Quiet(black) Min Masker(green)')
+        # plt.plot(FFTdecibel1[:256],c='r')
+        # plt.plot(threshold_quiet_vals[:256],c ='black')
+        # plt.plot(min_mask_factors,c ='g')
+        # plt.show()
 
         Recon_store = numpy.empty(Win,dtype='complex')
-        for i in range(1,Win/2+1):
-            COS = expandedbits[i-1]*min_mask_factors[i-1]*numpy.cos(Xangle[i])
-            SIN = expandedbits[i-1]*min_mask_factors[i-1]*numpy.sin(Xangle[i])
+        for i in range(0,Win/2):
+            COS = expandedbits[i]*min_mask_factors[i]*numpy.cos(FFT_angle[i])
+            SIN = expandedbits[i]*min_mask_factors[i]*numpy.sin(FFT_angle[i])
             Recon_store[i]=complex(COS,SIN)
-            if(i != Win-i):
+            if(i != 0):
                 Recon_store[Win-i]=complex(COS,-SIN)
-        Recon_store[0]= 0
+        Recon_store[Win/2]= 0
 
         value_embed      = ifft(Recon_store)
         value_embed_real = numpy.real(value_embed)
