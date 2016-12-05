@@ -12,7 +12,7 @@ Fs          = 44100.0
 frame_size  = 512
 step_size   = 256
 
-watermark   = '010011101101110011010111010101'              
+watermark   = '010011100000011010101010101100000111'              
 U           = 4    #no of frames per unit
 B           = 10    #no of units per block
 Bits_Block  = 2    #no of bits per block
@@ -224,6 +224,7 @@ enc_Wat.datawrite('output.wav',rate,watermarked_data)
 watermarked_data = numpy.array(watermarked_data,dtype=float)
 
 # comparison of the watermarked and the original signal
+plt.figure(1)
 plt.subplot(2, 1, 1)
 plt.plot(data)
 plt.subplot(2, 1, 2)
