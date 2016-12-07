@@ -28,7 +28,7 @@ threshold_quiet_vals = [0.00944567963877, 25.866905584234836, 14.845877790185327
 criticaldefn         = [1, 2, 3, 4, 5, 7, 8, 10, 12, 14, 16, 19, 21, 25, 29, 34, 39, 46, 56, 67, 81, 99, 122, 157]
 
 # multiplier for the frames, B frames per unit, implies, 4 elements
-C                    = [1,1,-1,-1]
+C                    = [1,1,1,1]
 U                    = 4    #no of frames per unit
 B                    = 10    #no of units per block
 filtbank_ind_scramble= [52 , 56 , 22 , 26 , 7 , 11 , 122 , 130 , 88 , 93 , 140 , 148 , 107 , 113 , 182 , 194 , 160 , 170 , 37 , 41 , 57 , 61 , 12 , 16 , 94 , 99 , 82 , 87 , 47 , 51 , 72 , 76 , 100 , 106 , 27 , 31 , 77 , 81 , 32 , 36 , 131 , 139 , 149 , 159 , 171 , 181 , 17 , 21 , 67 , 71 , 114 , 121 , 62 , 66 , 42 , 46]
@@ -67,10 +67,10 @@ def datawrite(filename,rate,data):
 
 # Block to expand the bits obtained from the bit-expand block
 # TODO-REDO
-def signexpanded(PNseq,N_unit,factor):
+def signexpanded(watermarkbits_expanded,countUnits,frame_factor):
     tmp = []
     for i in range(Num_subbands):
-        tmp.append(factor*PNseq[N_unit+(B*i)])
+        tmp.append(frame_factor*watermarkbits_expanded[(countUnits*Num_subbands)+i])
 
     sign = []
     for i in range(HalfWin):
@@ -421,7 +421,7 @@ def watermarking_block(signal,watermarkbits_expanded,Fs,Win,Step):
         if(countFrames>=U):
             countFrames = 0
             countUnits+=1
-        # when the number of units reaches U,encoding is done
+        # when the number of units reaches B,encoding is done
         if(countUnits>=B):
             print 'Finished encoding one block'
             return return_signal
