@@ -16,32 +16,6 @@ watermark   = '01001110110111001101011101010101011110010101010101010101010101010
 U           = 4    #no of frames per unit
 B           = 10   #no of units per block
 Bits_Block  = 2    #no of bits per block
-Tiles_bits  = 20
-Sync_bits   = 100
-Total_tiles = 280
-# no of tiles to watermark 10*28 = 140
-# 2*50=100 watermark and 180 sync bits 
-
-# length= 525200 and countFrames= 1024
-# MER
-# 4D4552   01001110
-# 0000 0
-# 0001 1
-# 0010 2
-# 0011 3
-# 0100 4
-# 0101 5
-# 0110 6
-# 0111 7
-# 1000 8
-# 1001 9
-# 1010 A
-# 1011 B 
-# 1100 C
-# 1101 D
-# 1110 E
-# 1111 F
-
 
 def stereo2mono(x):
 	'''
@@ -157,56 +131,29 @@ file             = 'output.wav'
 rate,data        = dec_wat.dataread(file)
 data             = stereo2mono(data)  # convert to mono
 N                = len(data)
-watermarked_data = numpy.empty(N)                        
-watermarked_data = 1*data
 # once can either choose to do silence detection and removal, in which case
 # the resulting watermarked audio will be so much more better in quality
 # the last argument is made one if and only if there is a need to remove 
 # silence frames from the audio
-segment_limits = silenceRemoval(data,1)
-no_blocks      = len(watermark)/Bits_Block
-duration_block = ((B*U)+1)*frame_size/(Fs*(2.0))
+segment_limits        = silenceRemoval(data,1)
+duration_block        = ((B*U)+1)*frame_size/(Fs*(2.0))
 duration_block_points = int(duration_block*Fs)
-duration_frame = frame_size/Fs  
-duration_file  = N/float(Fs)   
+duration_frame        = frame_size/float(Fs)
+duration_file         = N/float(Fs)
 
-# TODO - iteration for modifying the leeway involved in watermarking
-# the audio in such a way that the segment limits get increased.
-total_blocks_watermarked = 0
+total_blocks_decoded = 0
 c  = 0
 # U = 4    no of frames per unit
 # B = 10   no of units per block
 for i in range(len(segment_limits)):
     # figures out the no of blocks within a non silent segment
     no_blocks_segment = int((segment_limits[i][1]-segment_limits[i][0])/duration_block) 
-    if(((segment_limits[i][1]-(segment_limits[i][0]+(no_blocks_segment*duration_block)))>duration_frame) or (segment_limits[i][1]+duration_frame<duration_file)):
-        if(total_blocks_watermarked+no_blocks_segment<no_blocks):
-            for j in range(no_blocks_segment-1):
-                offset        = j*duration_block
-                start         = int(floor((segment_limits[i][0]+offset)*Fs))
-                end           = int(floor(((segment_limits[i][0]+offset)*Fs)+duration_block_points+frame_size))   
-                bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)            
-            total_blocks_watermarked = total_blocks_watermarked+no_blocks_segment
-        else:
-            for j in range(no_blocks-1-total_blocks_watermarked):
-                offset        = j*duration_block
-                start         = int(floor((segment_limits[i][0]+offset)*Fs))
-                end           = int(floor(((segment_limits[i][0]+offset)*Fs)+duration_block_points+frame_size))
-                bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)            
-            print 'Watermarking Done'
-            c = 1    
-            break
-if(c==0):
-    print 'Insufficient data to watermark bits in'
-
-det_wat.datawrite('output.wav',rate,watermarked_data)
-
-# TODO - explore using ICA for this separation
-watermarked_data = numpy.array(watermarked_data,dtype=float)
-
-# comparison of the watermarked and the original signal
-plt.subplot(2, 1, 1)
-plt.plot(data)
-plt.subplot(2, 1, 2)
-plt.plot(watermarked_data)
-plt.show() 
+    if(((segment_limits[i][1]-(segment_limits[i][0]+(no_blocks_segment*duration_block)))>duration_frame) or ((segment_limits[i][1]+(2*duration_frame))<duration_file)):
+        for j in range(no_blocks_segment):
+            offset        = j*duration_block
+            start         = int(floor((segment_limits[i][0]+offset)*Fs))
+            end           = int(floor(((segment_limits[i][0]+offset)*Fs)+duration_block_points+(2*frame_size)))   
+            # print start,end
+            bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)            
+        total_blocks_decoded = total_blocks_decoded+no_blocks_segment
+print 'DecoDone'
