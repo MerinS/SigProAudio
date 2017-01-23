@@ -95,6 +95,7 @@ def hann(wave,length):
         wave_hann[i]=0.81649658092*(1-numpy.cos(2*numpy.pi*i/length))*wave[i]
     return wave_hann
 
+    
 def watermark_decode_block(signal,Fs,frame_size,Step):
     frame_size = int(frame_size)
     Step = int(Step)
@@ -108,13 +109,6 @@ def watermark_decode_block(signal,Fs,frame_size,Step):
     # Signal normalization
     signal = numpy.double(signal)
     return_signal = signal.copy()
-
-    # TODO analyze the implcations of this
-    # signal = signal / (2.0 ** 15)
-    # DC = signal.mean()
-    # MAX = (numpy.abs(signal)).max()
-    # signal = (signal - DC) / MAX
-
     N              = len(signal)     # total number of samples
     curPos         = 0
     countFrames    = 0
@@ -173,10 +167,7 @@ def watermark_decode_block(signal,Fs,frame_size,Step):
     #     PN_bits[(i-Bits_Block*Tiles_bits)] = PRN[i]
     #     Positions_bits[(i-Bits_Block*Tiles_bits)] = int(Positions_srambled[i])
 
-    # print 'count',count
     FrameIndicator = numpy.ones(Num_subbands*U*B)
-    # U   = 4    #no of frames per unit
-    # B   = 10    #no of units per block 
 
     Sum_values1 = numpy.zeros(Bits_Block)
     Sum_values2 = numpy.zeros(Bits_Block)
@@ -186,38 +177,18 @@ def watermark_decode_block(signal,Fs,frame_size,Step):
             if Positions[(i*Num_subbands)+j] in Positions_bits:
                 value = Positions_bits.index(Positions[(i*Num_subbands)+j])
                 p     = int(value/Tiles_bits)
-                # print 'units,subbands',i,js
                 for k in range(U):     
                         Sum_values1[p]+=(value_array[j][((i*U)+k)]*PN_bits[value])
-                        # print value_array[j][((i*U)+k)]*PN_bits[value]
-                        # print PN_bits[value],value_array[j][((i*U)+k)]*PN_bits[value],Sum_values1[p]
                         Sum_values2[p]+=pow(value_array[j][((i*U)+k)],2)
                         Sum_values3[p]+=1
 
-     
-    # print Sum_values1,Sum_values2,Sum_values3
+    
+    decoded_list = [] 
     for i in range(len(Sum_values1)):
         if(Sum_values1[i]>0):
             print '1',
+            decoded_list.append(1)
         else:
             print '0',
-    # sys.exit()
-    #                 FrameIndicator[(i*U*Num_subbands)+(k*Num_subbands)+j] = PRN[value]
-    #             # sys.exit()
-
-    # print FrameIndicator
-    # print len(Positions_bits)
-
-
-    # def expand_bits(watermark_bits):
-    # bits_expand = numpy.empty(Total_tiles)
-    # for i in range(Bits_Block):
-    #     if(watermark_bits[i]== '0'):
-    #         dummy = -1
-    #     elif(watermark_bits[i]== '1'):
-    #         dummy = 1
-    #     for j in range(Tiles_bits):
-    #         bits_expand[int(Positions_srambled[(i*Tiles_bits)+j])] = float(PRN[(i*Tiles_bits)+j])*float(dummy)
-    # for i in range(Bits_Block*Tiles_bits,Total_tiles):
-    #     bits_expand[int(Positions_srambled[i])] = PRN[i];
-    # return bits_expand
+            decoded_list.append(0)
+    return decoded_list
