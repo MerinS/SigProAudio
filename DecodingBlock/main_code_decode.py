@@ -1,5 +1,6 @@
 import decoder_silence_removal as dec_SilRem
 import decodewatermark as dec_wat
+import LDPC_decoding as LDPC_d
 import numpy
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft
@@ -145,6 +146,7 @@ total_blocks_decoded = 0
 c  = 0
 # U = 4    no of frames per unit
 # B = 10   no of units per block
+watermarkdecoded     = []
 for i in range(len(segment_limits)):
     # figures out the no of blocks within a non silent segment
     no_blocks_segment = int((segment_limits[i][1]-segment_limits[i][0])/duration_block) 
@@ -155,5 +157,9 @@ for i in range(len(segment_limits)):
             end           = int(floor(((segment_limits[i][0]+offset)*Fs)+duration_block_points+(2*frame_size)))   
             # print start,end
             bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)            
+            for k in range(bits_returned):
+                watermarkdecoded.append(bits_returned[k])
         total_blocks_decoded = total_blocks_decoded+no_blocks_segment
+decoded_sequence = LDPC_d.LDPC_decode(total_blocks_decoded)
+print decoded_sequence
 print 'DecoDone'
