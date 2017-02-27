@@ -157,9 +157,9 @@ for i in range(len(segment_limits)):
             end           = int(floor(((segment_limits[i][0]+offset)*Fs)+duration_block_points+(2*frame_size)))   
             # print start,end
             bits_returned = dec_wat.watermark_decode_block(data[start:end],Fs,frame_size,step_size)            
-            for k in range(bits_returned):
+            for k in range(len(bits_returned)):
                 watermarkdecoded.append(bits_returned[k])
         total_blocks_decoded = total_blocks_decoded+no_blocks_segment
-decoded_sequence = LDPC_d.LDPC_decode(total_blocks_decoded)
+decoded_sequence = LDPC_d.LDPC_decode(watermarkdecoded)
 print decoded_sequence
 print 'DecoDone'
