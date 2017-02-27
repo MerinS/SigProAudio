@@ -36,10 +36,13 @@ def bit_flip(values,bits):
 # solutions obtained by analyzing the parity check matrices
 # HardCoded
 # TODO - automate this process
-codewords = [[0,0,0,0,0,0,0],[0,0,1,1,1,0],[0,1,0,1,1,1],[0,1,1,0,0,1],[1,0,0,1,0,1],[1,0,1,0,1,1],[1,1,0,0,1,0],[1,1,1,1,0,0]]
+codewords = [[0,0,0,0,0,0],[0,0,1,1,1,0],[0,1,0,1,1,1],[0,1,1,0,0,1],[1,0,0,1,0,1],[1,0,1,0,1,1],[1,1,0,0,1,0],[1,1,1,1,0,0]]
 infowords = ['000','001','010','011','100','101','110','111']
 def codewordtoinfo(values):
+        print "Values",values   
 	if(values in codewords):
+                print "enter"
+                print codewords.index(values)
 		return infowords[codewords.index(values)]
 
 
@@ -47,8 +50,11 @@ def LDPC_decode(watermark):
 	info_seq = str()
 	for i in range(len(watermark)/6):
 	 	values = watermark[(i*6):(i*6)+6]
+                print 'original',values
         	index  = parity_check(values)
+                print 'index',index
 		dec_value = 4*index[0] + 2*index[1] + index[0]
+                print "dec_value",dec_value
 		if(dec_value==0):
 			values = bit_flip(values,[2,6,5])
 		elif(dec_value==1):
@@ -63,6 +69,8 @@ def LDPC_decode(watermark):
 			values = bit_flip(values,[1])
 		elif(dec_value==6):
 			values = bit_flip(values,[3])
+                print values
         	info_value = codewordtoinfo(values)
-        info_seq = info_seq + info_value
-    return info_seq
+		print info_value
+                info_seq = info_seq + info_value
+        return info_seq
